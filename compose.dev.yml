@@ -1,0 +1,36 @@
+name: stocks-dev
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    environment:
+      discovery.type: single-node
+      OPENSEARCH_JAVA_OPTS: "-Xms1g -Xmx1g"
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - ${OPENSEARCH_DATA_DIR:-./opensearch/data}:/usr/share/opensearch/data
+      - ${OPENSEARCH_LOG_DIR:-./opensearch/logs}:/usr/share/opensearch/logs
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile:  { soft: 65536, hard: 65536 }
+    #sysctls:
+    #  - vm.max_map_count=262144
+
+  backend:
+    image: backend:latest
+    env_file: ./env/development/backend.env
+    ports:
+      - "8000:8000"
+
+# Frontend: run with `npm start` outside Docker (your preference)
+
+  ingest:
+    image: ingest:latest
+    env_file: ./env/development/ingest.env   # OS_HOST can be http://opensearch:9200
+    profiles: ["jobs"]
+    restart: "no"
+    entrypoint: [ "python" ]
