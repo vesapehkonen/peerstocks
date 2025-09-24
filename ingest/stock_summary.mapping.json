@@ -1,0 +1,49 @@
+{
+  "stock_summary" : {
+    "mappings" : {
+      "properties" : {
+        "price_growth_1y" : {
+          "type" : "double"
+        },
+        "price_growth_3y" : {
+          "type" : "double"
+        },
+        "price_growth_5y" : {
+          "type" : "double"
+        },
+        "price_history" : {
+          "type" : "double"
+        },
+        "revenue_growth_1y" : {
+          "type" : "double"
+        },
+        "revenue_growth_3y" : {
+          "type" : "double"
+        },
+        "revenue_growth_5y" : {
+          "type" : "double"
+        },
+        "revenue_history" : {
+          "type" : "nested",
+          "properties" : {
+            "estimated" : {
+              "type" : "boolean"
+            },
+            "revenue" : {
+              "type" : "double"
+            },
+            "year" : {
+              "type" : "integer"
+            }
+          }
+        },
+        "ticker" : {
+          "type" : "keyword"
+        },
+        "ttm_pe_ratio" : {
+          "type" : "double"
+        }
+      }
+    }
+  }
+}

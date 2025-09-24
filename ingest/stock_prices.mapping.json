@@ -1,0 +1,38 @@
+{
+  "stock_prices" : {
+    "mappings" : {
+      "properties" : {
+        "adj_close" : {
+          "type" : "double"
+        },
+        "close" : {
+          "type" : "double"
+        },
+        "date" : {
+          "type" : "date"
+        },
+        "dividend_yield" : {
+          "type" : "double"
+        },
+        "high" : {
+          "type" : "double"
+        },
+        "low" : {
+          "type" : "double"
+        },
+        "open" : {
+          "type" : "double"
+        },
+        "pe_ratio" : {
+          "type" : "double"
+        },
+        "ticker" : {
+          "type" : "keyword"
+        },
+        "volume" : {
+          "type" : "integer"
+        }
+      }
+    }
+  }
+}

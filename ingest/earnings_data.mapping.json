@@ -1,0 +1,77 @@
+{
+  "earnings_data" : {
+    "mappings" : {
+      "properties" : {
+        "assets" : {
+          "type" : "double"
+        },
+        "basic_eps" : {
+          "type" : "double"
+        },
+        "cash_flow" : {
+          "type" : "double"
+        },
+        "company_name" : {
+          "type" : "text"
+        },
+        "diluted_eps" : {
+          "type" : "double"
+        },
+        "end_date" : {
+          "type" : "date"
+        },
+        "eps_estimate" : {
+          "type" : "double"
+        },
+        "eps_surprise" : {
+          "type" : "double"
+        },
+        "eps_surprise_percent" : {
+          "type" : "double"
+        },
+        "equity" : {
+          "type" : "double"
+        },
+        "filing_date" : {
+          "type" : "date"
+        },
+        "fiscal_period" : {
+          "type" : "keyword"
+        },
+        "fiscal_year" : {
+          "type" : "integer"
+        },
+        "liabilities" : {
+          "type" : "double"
+        },
+        "net_income" : {
+          "type" : "double"
+        },
+        "operating_income" : {
+          "type" : "double"
+        },
+        "report_time" : {
+          "type" : "date"
+        },
+        "revenue_estimate" : {
+          "type" : "double"
+        },
+        "revenue_surprise" : {
+          "type" : "double"
+        },
+        "revenue_surprise_percent" : {
+          "type" : "double"
+        },
+        "revenues" : {
+          "type" : "double"
+        },
+        "start_date" : {
+          "type" : "date"
+        },
+        "ticker" : {
+          "type" : "keyword"
+        }
+      }
+    }
+  }
+}
