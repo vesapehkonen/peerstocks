@@ -2,3 +2,40 @@
 based_on_style = "pep8"
 indent_width = 4
 column_limit = 120
+
+# --- Formatting tweaks for readability ---
+# Force each argument onto its own line if call is long
+split_before_first_argument = true
+#split_before_named_assignments = true
+split_arguments_when_comma_terminated = true
+
+# Keep trailing commas consistent in multi-line lists/calls
+allow_split_before_dict_value = true
+coalesce_brackets = true
+dedent_closing_brackets = true
+
+# Extra readability options
+each_dict_entry_on_separate_line = true
+split_complex_comprehension = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# Enable rule families:
+# F = pyflakes (unused imports/variables)
+# E,W = pycodestyle (whitespace, PEP8 errors)
+# I = isort (import sorting)
+# Q = flake8-quotes
+# B = bugbear (common bug patterns)
+# UP = pyupgrade (modern Python style)
+# SIM = simplify (optional: simplifications)
+select = ["F", "E", "W", "I", "Q", "B"]
+# Allow auto-fixes for the above
+fixable = ["F", "E", "W", "I", "Q", "B"]
+ignore = ["B008"]
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "double"
+multiline-quotes = "double"
+docstring-quotes = "double"

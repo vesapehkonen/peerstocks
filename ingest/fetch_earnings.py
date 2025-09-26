@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
+import argparse
+import json
 import os
 import sys
 import time
-import json
-import argparse
+
 import requests
 
 # ── Configuration ───────────────────────────────────────────────────────────────
@@ -21,10 +22,12 @@ def polygon_get(url, api_key, max_retries=5, sleep_base=2):
         # Auth error: don't keep retrying
         if resp.status_code == 401:
             msg = resp.text.strip()
-            raise SystemExit(f"[ERROR] HTTP 401 from Polygon. "
-                             f"Your API key is missing/invalid or lacks access.\n"
-                             f"URL: {url}\nResponse: {msg}\n"
-                             f"Tip: export POLYGON_API_KEY=... or use --api-key ...")
+            raise SystemExit(
+                f"[ERROR] HTTP 401 from Polygon. "
+                f"Your API key is missing/invalid or lacks access.\n"
+                f"URL: {url}\nResponse: {msg}\n"
+                f"Tip: export POLYGON_API_KEY=... or use --api-key ..."
+            )
         # Too many requests → backoff
         if resp.status_code == 429:
             wait = sleep_base * (2**attempt)
@@ -52,7 +55,8 @@ def fetch_earnings_range(ticker, start_date, end_date, api_key):
         f"&filing_date.gte={start_date}"
         f"&filing_date.lte={end_date}"
         f"&limit=100"  # page size (tune per plan)
-        f"&apiKey={api_key}")
+        f"&apiKey={api_key}"
+    )
     url = _with_key(base, api_key)
     results = []
 
@@ -150,18 +154,33 @@ def fetch_earnings(tickers_csv, start_date, end_date, api_key, output_file):
     print(f"\nDone. Wrote {len(all_docs)} records to {output_file}")
 
 
+def fetch_earnings_with_different_start_date(tickers, end_date, api_key, output_file):
+    all_docs = []
+
+    for ticker in tickers:
+        print(f"→ Fetching {ticker['ticker']}...", end="", flush=True)
+        results = fetch_earnings_range(ticker["ticker"], ticker["date"], end_date, api_key)
+        docs = process_earnings_data(results)
+        all_docs.extend(docs)
+        print(f" {len(docs)} records")
+        # Soft pacing between tickers
+        time.sleep(1.0)
+
+    write_ndjson(all_docs, output_file)
+    print(f"\nDone. Wrote {len(all_docs)} records to {output_file}")
+
+
 def parse_args():
     p = argparse.ArgumentParser(description="Fetch Polygon financials between explicit start/end dates.")
     p.add_argument("tickers", help="Comma-separated tickers, e.g. AAPL,MSFT,TSLA")
     p.add_argument("start_date", help="Inclusive start date, YYYY-MM-DD")
     p.add_argument("end_date", help="Inclusive end date, YYYY-MM-DD")
-    p.add_argument("--api-key",
-                   default=os.getenv("POLYGON_API_KEY", ""),
-                   help="Polygon API key (or set env POLYGON_API_KEY)")
-    p.add_argument("-o",
-                   "--output",
-                   default=DEFAULT_OUTPUT_FILE,
-                   help=f"Output NDJSON file (default: {DEFAULT_OUTPUT_FILE})")
+    p.add_argument(
+        "--api-key", default=os.getenv("POLYGON_API_KEY", ""), help="Polygon API key (or set env POLYGON_API_KEY)"
+    )
+    p.add_argument(
+        "-o", "--output", default=DEFAULT_OUTPUT_FILE, help=f"Output NDJSON file (default: {DEFAULT_OUTPUT_FILE})"
+    )
     return p.parse_args()
 
 

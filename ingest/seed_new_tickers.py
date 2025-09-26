@@ -1,25 +1,34 @@
 #!/usr/bin/env python3
-import os, sys, argparse, json, time
-from opensearchpy import OpenSearch, helpers
-import fetch_prices
+import argparse
+import json
+import os
+import sys
+
 import fetch_earnings
+import fetch_prices
+from config import settings
+from opensearchpy import OpenSearch, helpers
 
 DEFAULT_EARNINGS_INDEX = "earnings_data"
 DEFAULT_PRICES_INDEX = "stock_prices"
+CONNECT_TIMEOUT = 3
 
 
-def os_client():
-    host = os.getenv("OS_HOST")
-    if not host:
-        raise SystemExit("Set OS_HOST (and optionally OS_USER/OS_PASS).")
-    user, pwd = os.getenv("OS_USER"), os.getenv("OS_PASS")
-    return OpenSearch(hosts=[host],
-                      http_auth=(user, pwd) if user and pwd else None,
-                      timeout=90,
-                      max_retries=3,
-                      retry_on_timeout=True,
-                      verify_certs=False,
-                      ssl_show_warn=False)
+def os_client() -> OpenSearch:
+    auth = None
+    if settings.OS_USER and settings.OS_PASS:
+        auth = (settings.OS_USER, settings.OS_PASS.get_secret_value())
+
+    client = OpenSearch(
+        hosts=[str(settings.OS_HOST)],
+        http_auth=auth,
+        timeout=CONNECT_TIMEOUT,
+        max_retries=3,
+        retry_on_timeout=True,
+        verify_certs=False,
+        ssl_show_warn=False,
+    )
+    return client
 
 
 def actions_from_ndjson(path):
@@ -48,7 +57,7 @@ def seed(tickers, start_date, end_date, polygon_api_key, run_summary):
 
     print(f"[SEED] Earnings {tickers} {start_date}..{end_date}")
     if not polygon_api_key:
-        polygon_api_key = os.getenv("POLYGON_API_KEY", "")
+        polygon_api_key = settings.POLYGON_API_KEY.get_secret_value()
     if not polygon_api_key:
         raise SystemExit("Missing Polygon API key (set POLYGON_API_KEY or pass --api-key).")
     fetch_earnings.fetch_earnings(tickers, start_date, end_date, polygon_api_key, earnings_out)
@@ -61,27 +70,63 @@ def seed(tickers, start_date, end_date, polygon_api_key, run_summary):
 
 
 def load_tickers(arg: str) -> str:
+    # First, try to treat it as a file path (without uppercasing the path)
     if os.path.isfile(arg):
         with open(arg) as f:
-            syms = [ln.strip().upper() for ln in f if ln.strip()]
-        return ",".join(syms)
-    return ",".join(t.strip().upper() for t in arg.split(",") if t.strip())        
+            syms = [ln.strip() for ln in f if ln.strip()]
+        return ",".join(s.upper() for s in syms)
+
+    # If it *looks* like a path but isn't a file, fail fast
+    if os.path.sep in arg:
+        raise SystemExit(f"Ticker file not found: {arg}")
+
+    # Otherwise treat it as a comma-separated list of tickers
+    return ",".join(t.strip().upper() for t in arg.split(",") if t.strip())
+
+
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 
 def parse_args():
     p = argparse.ArgumentParser(description="Seed new tickers with historical prices & earnings.")
     p.add_argument("tickers", help="Comma-separated tickers or path to a text file with one ticker per line.")
-    p.add_argument("start_date", help="YYYY-MM-DD (historical start)")
-    p.add_argument("end_date", help="YYYY-MM-DD (historical end)")
+    p.add_argument("start_date", nargs="?", help="YYYY-MM-DD (historical start). Defaults to ~10 years ago.")
+    p.add_argument("end_date", nargs="?", help="YYYY-MM-DD (historical end). Defaults to today.")
     p.add_argument("--api-key", default=os.getenv("POLYGON_API_KEY", ""))
     p.add_argument("--skip-summary", action="store_true")
-    return p.parse_args()
+
+    args = p.parse_args()
+
+    def to_date(x):
+        if x is None:
+            return None
+        if isinstance(x, date) and not isinstance(x, datetime):
+            return x
+        if isinstance(x, datetime):
+            return x.date()
+        # assume string YYYY-MM-DD
+        return date.fromisoformat(str(x).strip())
+
+    today = datetime.now(ZoneInfo("America/Los_Angeles")).date()
+
+    end = to_date(args.end_date) or today
+    start = to_date(args.start_date) or (end - timedelta(days=3650))  # ~10 years
+
+    if start > end:
+        p.error(f"start_date ({start.isoformat()}) cannot be after end_date ({end.isoformat()}).")
+
+    # normalize back to strings for downstream funcs
+    args.start_date = start.isoformat()
+    args.end_date = end.isoformat()
+    return args
 
 
 def main():
     a = parse_args()
     tickers_csv = load_tickers(a.tickers)
     seed(tickers_csv, a.start_date, a.end_date, a.api_key, not a.skip_summary)
+
 
 if __name__ == "__main__":
     main()

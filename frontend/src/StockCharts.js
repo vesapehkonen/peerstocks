@@ -1,15 +1,6 @@
 // src/StockCharts.js
 import React, { useMemo } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend } from "recharts";
 
 export default function StockCharts({ quarterlyData, yearRange }) {
   const filteredData = useMemo(() => {
@@ -23,7 +14,7 @@ export default function StockCharts({ quarterlyData, yearRange }) {
   return (
     <div className="bg-white p-6 rounded-lg shadow max-w-5xl mx-auto space-y-8">
       {/* Chart Row */}
-      {[ 
+      {[
         { label: "Stock Price", key: "price", color: "#3b82f6", showXAxis: false },
         { label: "TTM EPS", key: "ttm_eps", color: "#10b981", showXAxis: false },
         { label: "P/E Ratio", key: "pe_ratio", color: "#f97316", showXAxis: true },
@@ -39,14 +30,7 @@ export default function StockCharts({ quarterlyData, yearRange }) {
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={filteredData} syncId="stockSync">
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="quarter"
-                  angle={-45}
-                  textAnchor="end"
-		  interval={0}
-                  height={60}
-                  hide={!showXAxis}
-                />
+                <XAxis dataKey="quarter" angle={-45} textAnchor="end" interval={0} height={60} hide={!showXAxis} />
                 <YAxis />
                 <Tooltip />
                 <Legend />
@@ -55,7 +39,7 @@ export default function StockCharts({ quarterlyData, yearRange }) {
                   dataKey={key}
                   name={label}
                   stroke={color}
-		  strokeOpacity={0.80}  
+                  strokeOpacity={0.8}
                   strokeWidth={2}
                   dot={{ r: 4 }}
                   activeDot={{ r: 6 }}

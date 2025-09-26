@@ -1,23 +1,121 @@
 #!/usr/bin/env python3
-import os, sys, argparse, json, datetime as dt
+import argparse
+import datetime as dt
+import json
+import os
+import sys
+
+from config import settings
 from opensearchpy import OpenSearch, helpers
 
 DEFAULT_INDEX = "earnings_data"
 DEFAULT_OUTPUT = "earnings.ndjson"
+CONNECT_TIMEOUT = 3
 
 
-def os_client():
-    host = os.getenv("OS_HOST")
-    if not host:
-        raise SystemExit("Set OS_HOST (and optionally OS_USER/OS_PASS).")
-    user, pwd = os.getenv("OS_USER"), os.getenv("OS_PASS")
-    return OpenSearch(hosts=[host],
-                      http_auth=(user, pwd) if user and pwd else None,
-                      timeout=90,
-                      max_retries=3,
-                      retry_on_timeout=True,
-                      verify_certs=False,
-                      ssl_show_warn=False)
+def os_client() -> OpenSearch:
+    auth = None
+    if settings.OS_USER and settings.OS_PASS:
+        auth = (settings.OS_USER, settings.OS_PASS.get_secret_value())
+
+    client = OpenSearch(
+        hosts=[str(settings.OS_HOST)],
+        http_auth=auth,
+        timeout=CONNECT_TIMEOUT,
+        max_retries=3,
+        retry_on_timeout=True,
+        verify_certs=False,
+        ssl_show_warn=False,
+    )
+    return client
+
+
+from typing import Any, Dict, List, Optional
+
+
+def latest_dates(
+    client,
+    tickers: List[str],
+    *,
+    index: str = "earnings_data",
+    ticker_field: str = "ticker",
+    date_field: str = "filing_date",
+    page_size: int = 1000,
+) -> List[Dict[str, Optional[str]]]:
+    """
+    For each ticker, return its latest (max) {date_field} found in the index.
+
+    Returns:
+      [ {"ticker": "AAPL", "date": "2022-01-01"},
+        {"ticker": "NKE",  "date": "2024-01-01"} ]
+
+    Tickers with no docs are **omitted** from the result.
+    """
+    # Normalize input
+    if not tickers:
+        return []
+    tickers = [t.strip() for t in tickers if t and t.strip()]
+
+    # Composite aggregation over provided tickers to get max(date_field) per ticker
+    after_key = None
+    latest_per_ticker: Dict[str, Optional[str]] = {}
+
+    while True:
+        body: Dict[str, Any] = {
+            "size": 0,
+            "query": {
+                "bool": {
+                    "filter": [{
+                        "terms": {
+                            ticker_field: tickers
+                        }
+                    }]
+                }
+            },
+            "aggs": {
+                "by_ticker": {
+                    "composite": {
+                        "size": page_size,
+                        "sources": [{
+                            "ticker": {
+                                "terms": {
+                                    "field": ticker_field
+                                }
+                            }
+                        }],
+                    },
+                    "aggs": {
+                        "last_seen": {
+                            "max": {
+                                "field": date_field
+                            }
+                        }
+                    },
+                }
+            },
+        }
+        if after_key:
+            body["aggs"]["by_ticker"]["composite"]["after"] = after_key
+
+        resp = client.search(index=index, body=body)
+        comp = resp["aggregations"]["by_ticker"]
+        for b in comp["buckets"]:
+            tkr = b["key"]["ticker"]
+            v = b["last_seen"].get("value_as_string")
+            latest_per_ticker[tkr] = v[:10] if v else None  # YYYY-MM-DD
+
+        after_key = comp.get("after_key")
+        if not after_key:
+            break
+
+    # Return only tickers that were found in OpenSearch (preserve input order)
+    out: List[Dict[str, Optional[str]]] = []
+
+    for t in tickers:
+        if t in latest_per_ticker:
+            out.append({"ticker": t, "date": latest_per_ticker[t]})
+
+    return out
 
 
 def latest_date(client, index: str, date_field: str = "filing_date") -> str | None:
@@ -59,7 +157,7 @@ def parse_args():
     p.add_argument("--start-date", help="YYYY-MM-DD (overrides auto-detected start)")
     p.add_argument("--end-date", help="YYYY-MM-DD (default: today)")
     p.add_argument("-o", "--output", default=DEFAULT_OUTPUT)
-    p.add_argument("--api-key", default=os.getenv("POLYGON_API_KEY", ""))
+    p.add_argument("--api-key", default=settings.POLYGON_API_KEY.get_secret_value())
     p.add_argument("--run-summary", action="store_true", help="Run update_stock_summary.py after indexing")
     return p.parse_args()
 
@@ -72,30 +170,36 @@ def load_tickers(arg: str) -> str:
     return ",".join(t.strip().upper() for t in arg.split(",") if t.strip())
 
 
+import re
+
+
+def normalize_tickers(tickers):
+    if isinstance(tickers, str):
+        return [t for t in re.split(r"[,\s]+", tickers) if t]
+    return list(tickers)
+
+
 def main():
     args = parse_args()
     if not args.api_key:
         raise SystemExit("Missing Polygon API key. Set POLYGON_API_KEY or pass --api-key.")
 
     client = os_client()
+    tickers_csv = load_tickers(args.tickers)
+    tickers_list = normalize_tickers(tickers_csv)
 
-    # Determine date range
     end = args.end_date or dt.date.today().strftime("%Y-%m-%d")
     if args.start_date:
-        start = args.start_date
+        buckets = [{"ticker": t, "date": arg.start_date} for t in ticker_list]
     else:
-        latest = latest_date(client, args.index, "filing_date")
-        if latest:
-            start = plus_one(latest)
-        else:
-            raise SystemExit("Index empty. Provide --start-date for initial backfill.")
+        buckets = latest_dates(client, tickers_list)
+    print(buckets)
+    for bucket in buckets:
+        bucket["date"] = plus_one(bucket["date"])
+        print(f"[EARNINGS] {tickers_csv[:80]}{'...' if len(tickers_csv)>80 else ''} {bucket['date']}..{end}")
 
-    tickers_csv = load_tickers(args.tickers)
-    print(f"[EARNINGS] {tickers_csv[:80]}{'...' if len(tickers_csv)>80 else ''} {start}..{end}")
-
-    # Call your existing fetcher
     import fetch_earnings
-    fetch_earnings.fetch_earnings(tickers_csv, start, end, args.api_key, args.output)
+    fetch_earnings.fetch_earnings_with_different_start_date(buckets, end, args.api_key, args.output)
 
     # Index to OpenSearch
     added = index_ndjson(client, args.index, args.output)

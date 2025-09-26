@@ -4,9 +4,7 @@ function StockTable({ data }) {
   const [sortOrder, setSortOrder] = useState("desc"); // 'desc' or 'asc'
 
   const sortedData = [...data].sort((a, b) => {
-    return sortOrder === "desc"
-      ? new Date(b.date) - new Date(a.date)
-      : new Date(a.date) - new Date(b.date);
+    return sortOrder === "desc" ? new Date(b.date) - new Date(a.date) : new Date(a.date) - new Date(b.date);
   });
 
   const toggleOrder = () => {
@@ -40,10 +38,7 @@ function StockTable({ data }) {
           </thead>
           <tbody>
             {sortedData.map((row, i) => (
-              <tr
-                key={i}
-                className={i % 2 === 0 ? "bg-white" : "bg-gray-50 hover:bg-blue-50"}
-              >
+              <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50 hover:bg-blue-50"}>
                 <td className="border-t px-4 py-2">{row.quarter}</td>
                 <td className="border-t px-4 py-2">{row.date}</td>
                 <td className="border-t px-4 py-2 text-right">{row.eps}</td>

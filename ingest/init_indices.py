@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-import os
-import sys
 import json
 from pathlib import Path
+
+from config import settings
 from opensearchpy import OpenSearch
 
-# Keep index names consistent with your seeder
 DEFAULT_EARNINGS_INDEX = "earnings_data"
 DEFAULT_PRICES_INDEX = "stock_prices"
 DEFAULT_SUMMARY_INDEX = "stock_summary"
@@ -16,20 +15,24 @@ MAPPING_FILES = [
     "stock_summary.mapping.json",
 ]
 
-def os_client():
-    host = os.getenv("OS_HOST")
-    if not host:
-        raise SystemExit("Set OS_HOST (and optionally OS_USER/OS_PASS).")
-    user, pwd = os.getenv("OS_USER"), os.getenv("OS_PASS")
-    return OpenSearch(
-        hosts=[host],
-        http_auth=(user, pwd) if user and pwd else None,
-        timeout=90,
+CONNECT_TIMEOUT = 3
+
+
+def os_client() -> OpenSearch:
+    auth = None
+    if settings.OS_USER and settings.OS_PASS:
+        auth = (settings.OS_USER, settings.OS_PASS.get_secret_value())
+    client = OpenSearch(
+        hosts=[str(settings.OS_HOST)],
+        http_auth=auth,
+        timeout=CONNECT_TIMEOUT,
         max_retries=3,
         retry_on_timeout=True,
         verify_certs=False,
         ssl_show_warn=False,
     )
+    return client
+
 
 def load_mapping_file(path: Path):
     """
@@ -52,6 +55,7 @@ def load_mapping_file(path: Path):
 
     return index_name, mappings
 
+
 def ensure_index_with_mapping(client: OpenSearch, index_name: str, mappings: dict):
     """
     Create index with the provided mappings if it doesn't exist.
@@ -65,6 +69,7 @@ def ensure_index_with_mapping(client: OpenSearch, index_name: str, mappings: dic
     print(f"[CREATE] Index '{index_name}' …")
     client.indices.create(index=index_name, body=body)
     print(f"[OK] Created '{index_name}'")
+
 
 def main():
     print("[INIT] Starting index initialization …")
@@ -89,6 +94,7 @@ def main():
         print(f"[DONE] Indices initialized. Cluster: {cluster}")
     except Exception:
         print("[DONE] Indices initialized.")
+
 
 if __name__ == "__main__":
     main()

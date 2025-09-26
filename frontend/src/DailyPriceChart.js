@@ -1,13 +1,5 @@
 import React, { useMemo } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ResponsiveContainer,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 import dayjs from "dayjs";
 
 export default function DailyPriceChart({ dailyData, range, setRange }) {
@@ -17,21 +9,19 @@ export default function DailyPriceChart({ dailyData, range, setRange }) {
       "1M": dayjs().subtract(1, "month"),
       "1Y": dayjs().subtract(1, "year"),
       "5Y": dayjs().subtract(5, "year"),
-      "All": dayjs("1900-01-01"),
+      All: dayjs("1900-01-01"),
     }[range];
     return dailyData.filter((d) => dayjs(d.date).isAfter(cutoff));
   }, [dailyData, range]);
 
   const yDomain = useMemo(() => {
     if ((range === "1M" || range === "1Y") && filteredData.length > 1) {
-      const prices = filteredData
-        .map((d) => d.price)
-        .filter((v) => typeof v === "number" && isFinite(v));
+      const prices = filteredData.map((d) => d.price).filter((v) => typeof v === "number" && isFinite(v));
       if (prices.length >= 2) {
         const min = Math.min(...prices);
         const max = Math.max(...prices);
         if (min !== max) {
-          return [min * 0.950, max * 1.005];
+          return [min * 0.95, max * 1.005];
         }
       }
     }
@@ -70,24 +60,16 @@ export default function DailyPriceChart({ dailyData, range, setRange }) {
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={filteredData}>
               <CartesianGrid strokeDasharray="3 3" />
-	        <XAxis
+              <XAxis
                 dataKey="date"
                 tickFormatter={(d) => dayjs(d).format("MM/DD")}
                 angle={-45}
-                textAnchor="end"		    
+                textAnchor="end"
                 height={40}
               />
-              <YAxis
-                domain={yDomain}
-                tickFormatter={(val) => val.toFixed(0)}
-              />
+              <YAxis domain={yDomain} tickFormatter={(val) => val.toFixed(0)} />
               <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="price"
-                stroke="#3b82f6"
-                dot={false}
-              />
+              <Line type="monotone" dataKey="price" stroke="#3b82f6" dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

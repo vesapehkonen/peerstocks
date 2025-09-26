@@ -5,15 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import api from "./api";
 
 const stockTypes = ["Growth", "Value", "Dividend"];
-const sectors = [
-  "Technology",
-  "Healthcare",
-  "Finance",
-  "Energy",
-  "Utilities",
-  "Consumer",
-  "Industrial",
-];
+const sectors = ["Technology", "Healthcare", "Finance", "Energy", "Utilities", "Consumer", "Industrial"];
 
 function AdvancedSearch() {
   const [peMax, setPeMax] = useState("");
@@ -34,9 +26,12 @@ function AdvancedSearch() {
 
   // Keep selection pruned to current result set
   useEffect(() => {
-    if (!results?.length) { setSelected(new Set()); return; }
-    const tickers = new Set(results.map(r => r.ticker));
-    setSelected(prev => {
+    if (!results?.length) {
+      setSelected(new Set());
+      return;
+    }
+    const tickers = new Set(results.map((r) => r.ticker));
+    setSelected((prev) => {
       const next = new Set();
       for (const t of prev) if (tickers.has(t)) next.add(t);
       return next;
@@ -44,7 +39,7 @@ function AdvancedSearch() {
   }, [results]);
 
   const toggle = (ticker) => {
-    setSelected(prev => {
+    setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(ticker)) {
         next.delete(ticker);
@@ -96,7 +91,7 @@ function AdvancedSearch() {
       setLoading(false);
     }
   };
-  
+
   const handleSort = (key) => {
     setSortConfig((prev) => {
       if (prev.key === key) {
@@ -115,29 +110,24 @@ function AdvancedSearch() {
       if (aVal == null) return 1;
       if (bVal == null) return -1;
       if (typeof aVal === "string") {
-        return sortConfig.direction === "asc"
-          ? aVal.localeCompare(bVal)
-          : bVal.localeCompare(aVal);
+        return sortConfig.direction === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
       }
       return sortConfig.direction === "asc" ? aVal - bVal : bVal - aVal;
     });
   }
 
-  const allVisibleSelected =
-    results.length > 0 && results.every(r => selected.has(r.ticker));
+  const allVisibleSelected = results.length > 0 && results.every((r) => selected.has(r.ticker));
 
   return (
     <div className="max-w-5xl mx-auto bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 pt-4 md:pt-6 pb-8 px-4">
       <h1 className="text-xl md:text-2xl font-semibold tracking-tight leading-tight mb-4 text-gray-800 dark:text-gray-100 text-center">
-        <span className="mr-2 text-lg md:text-xl align-middle" aria-hidden>🔎</span>
+        <span className="mr-2 text-lg md:text-xl align-middle" aria-hidden>
+          🔎
+        </span>
         Advanced Stock Search
       </h1>
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow w-full space-y-6"
-      >
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow w-full space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
           {/* Left Column: Valuation + Growth */}
           <div className="space-y-6">
             <div>
@@ -193,63 +183,59 @@ function AdvancedSearch() {
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold mb-2">Stock Types</h2>
-              <fieldset disabled className="opacity-50"> {/*  when this feature is implemented remove this */}
-              <div className="flex flex-col gap-2">
-                {stockTypes.map((type) => (
-                  <label key={type} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      value={type}
-                      checked={selectedTypes.includes(type)}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setSelectedTypes((prev) =>
-                          checked ? [...prev, type] : prev.filter((t) => t !== type)
-                        );
-                      }}
-                    />
-                    <span>{type}</span>
-                  </label>
-                ))}
-              </div>
-              </fieldset> {/*  when this feature is implemented remove this */}
+              <fieldset disabled className="opacity-50">
+                {" "}
+                {/*  when this feature is implemented remove this */}
+                <div className="flex flex-col gap-2">
+                  {stockTypes.map((type) => (
+                    <label key={type} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        value={type}
+                        checked={selectedTypes.includes(type)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setSelectedTypes((prev) => (checked ? [...prev, type] : prev.filter((t) => t !== type)));
+                        }}
+                      />
+                      <span>{type}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>{" "}
+              {/*  when this feature is implemented remove this */}
             </div>
 
             <div>
               <h2 className="text-lg font-semibold mb-2">Sectors</h2>
-              <div className="opacity-70"> {/*  when this feature is implemented remove this */}
-              <select
-                multiple
-                value={selectedSectors}
-                onChange={(e) => {
-                  const selected = Array.from(e.target.selectedOptions).map(
-                    (opt) => opt.value
-                  );
-                  setSelectedSectors(selected);
-                }}
-                className="w-full p-2 text-sm border rounded dark:bg-gray-700 dark:text-white h-32"
-                disabled /*  when this feature is implemented remove this line */
-              >
-                {sectors.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <p className="text-sm text-gray-500 mt-1">
-                Hold Ctrl (or Cmd) to select multiple.
-              </p>
-              </div> {/*  when this feature is implemented remove this */}
-
+              <div className="opacity-70">
+                {" "}
+                {/*  when this feature is implemented remove this */}
+                <select
+                  multiple
+                  value={selectedSectors}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions).map((opt) => opt.value);
+                    setSelectedSectors(selected);
+                  }}
+                  className="w-full p-2 text-sm border rounded dark:bg-gray-700 dark:text-white h-32"
+                  disabled /*  when this feature is implemented remove this line */
+                >
+                  {sectors.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-sm text-gray-500 mt-1">Hold Ctrl (or Cmd) to select multiple.</p>
+              </div>{" "}
+              {/*  when this feature is implemented remove this */}
             </div>
           </div>
         </div>
 
         <div className="text-center pt-4">
-          <button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg"
-          >
+          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg">
             Search
           </button>
         </div>
@@ -278,7 +264,8 @@ function AdvancedSearch() {
                 Clear
               </button>
               <span className="text-sm text-gray-600 dark:text-gray-300">
-                Selected: {selected.size}{selected.size >= MAX_COMPARE ? ` / ${MAX_COMPARE}` : ""}
+                Selected: {selected.size}
+                {selected.size >= MAX_COMPARE ? ` / ${MAX_COMPARE}` : ""}
               </span>
               <button
                 className={`rounded-md px-3 py-1 text-sm ${
@@ -302,7 +289,7 @@ function AdvancedSearch() {
                     {/* header checkbox: select all (visible) */}
                     <input
                       type="checkbox"
-                      onChange={(e) => e.target.checked ? selectAllVisible() : clearSelection()}
+                      onChange={(e) => (e.target.checked ? selectAllVisible() : clearSelection())}
                       checked={allVisibleSelected && selected.size > 0}
                       aria-label="Select all visible"
                     />
@@ -339,10 +326,7 @@ function AdvancedSearch() {
                   const isChecked = selected.has(row.ticker);
                   const disableCheckbox = !isChecked && selected.size >= MAX_COMPARE;
                   return (
-                    <tr
-                      key={row.ticker}
-                      className="border-t hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
+                    <tr key={row.ticker} className="border-t hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="p-2">
                         <input
                           type="checkbox"
@@ -374,7 +358,7 @@ function AdvancedSearch() {
                       </td>
                       <td className="p-2">
                         {row.revenue_history && row.revenue_history.length > 0 ? (
-                          <Sparklines data={row.revenue_history.map(e => e.revenue)} width={80} height={20}>
+                          <Sparklines data={row.revenue_history.map((e) => e.revenue)} width={80} height={20}>
                             <SparklinesLine />
                           </Sparklines>
                         ) : (
@@ -387,7 +371,6 @@ function AdvancedSearch() {
               </tbody>
             </table>
           </div>
-
         </div>
       )}
     </div>

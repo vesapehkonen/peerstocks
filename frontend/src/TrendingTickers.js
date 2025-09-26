@@ -8,9 +8,7 @@ export default function TrendingTickers({ tickers = DEFAULT_TRENDING, onSelect }
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-100">
-          Trending
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-100">Trending</h3>
         <span className="text-xs text-gray-500">Quick picks</span>
       </div>
 

@@ -23,6 +23,8 @@ services:
   backend:
     image: backend:latest
     env_file: ./env/development/backend.env
+    environment:
+      OS_HOST: http://opensearch:9200
     ports:
       - "8000:8000"
 
@@ -31,6 +33,8 @@ services:
   ingest:
     image: ingest:latest
     env_file: ./env/development/ingest.env   # OS_HOST can be http://opensearch:9200
+    environment:
+      OS_HOST: http://opensearch:9200
     profiles: ["jobs"]
     restart: "no"
     entrypoint: [ "python" ]

@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.venv/
+.env
+.env.*
+
+# Node/React
+frontend/node_modules/
+frontend/.env
+frontend/.env.*
+
+# Build artifacts
+frontend/build/
+dist/
+build/
+.cache/
+*.log
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+
+# Docker & local data (keep samples, ignore real env/data)
+env/**/backend.env
+env/**/ingest.env
+opensearch/data/
+opensearch/logs/

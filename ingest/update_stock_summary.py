@@ -1,41 +1,44 @@
-import pandas as pd
-from datetime import datetime, timedelta
-from collections import defaultdict
-import math
 import json
-import os
+from collections import defaultdict
+from datetime import datetime, timedelta
+
+from config import settings
 from opensearchpy import OpenSearch
 
-TIMEOUT = 20
+CONNECT_TIMEOUT = 3
+REQUEST_TIMEOUT = 20
 
 
-def _os_client():
-    host = os.getenv("OS_HOST")
-    if not host:
-        raise SystemExit("Set OS_HOST (and optionally OS_USER/OS_PASS).")
-    user, pwd = os.getenv("OS_USER"), os.getenv("OS_PASS")
-    return OpenSearch(hosts=[host],
-                      http_auth=(user, pwd) if user and pwd else None,
-                      timeout=90,
-                      max_retries=3,
-                      retry_on_timeout=True,
-                      verify_certs=False,
-                      ssl_show_warn=False)
+def os_client() -> OpenSearch:
+    auth = None
+    if settings.OS_USER and settings.OS_PASS:
+        auth = (settings.OS_USER, settings.OS_PASS.get_secret_value())
+
+    client = OpenSearch(
+        hosts=[str(settings.OS_HOST)],
+        http_auth=auth,
+        timeout=CONNECT_TIMEOUT,
+        max_retries=3,
+        retry_on_timeout=True,
+        verify_certs=False,
+        ssl_show_warn=False,
+    )
+    return client
 
 
-_CLIENT = _os_client()
+_CLIENT = os_client()
 
 
 # Small helpers to match prior behavior
 def _search(index: str, body: dict) -> dict:
-    return _CLIENT.search(index=index, body=body, request_timeout=TIMEOUT)
+    return _CLIENT.search(index=index, body=body, request_timeout=REQUEST_TIMEOUT)
 
 
 def _index(index: str, doc_id: str, body: dict):
     # Use client.index, but preserve your printed status semantics:
     # 201 if created, 200 if updated; print non-2xx with error text.
     try:
-        resp = _CLIENT.index(index=index, id=doc_id, body=body, request_timeout=TIMEOUT)
+        resp = _CLIENT.index(index=index, id=doc_id, body=body, request_timeout=REQUEST_TIMEOUT)
         result = (resp or {}).get("result")
         status = 201 if result == "created" else 200
         print(f"Indexed {doc_id}: {status}")
@@ -107,7 +110,8 @@ def calc_cagr(start, end, years):
 
 def compute_ttm_eps(earnings):
     sorted_eps = [
-        doc["_source"]["basic_eps"] for doc in sorted(earnings, key=lambda x: x["_source"]["end_date"], reverse=True)
+        doc["_source"]["basic_eps"]
+        for doc in sorted(earnings, key=lambda x: x["_source"]["end_date"], reverse=True)
         if isinstance(doc["_source"].get("basic_eps"), (int, float))
     ]
     if len(sorted_eps) >= 4:
@@ -199,7 +203,8 @@ def get_price_trend_5y(ticker: str) -> list[float]:
 
     prices_by_date = {
         h["_source"]["date"]: h["_source"]["close"]
-        for h in hits if isinstance(h["_source"].get("close"), (int, float))
+        for h in hits
+        if isinstance(h["_source"].get("close"), (int, float))
     }
 
     trend = []
@@ -217,7 +222,6 @@ def get_price_trend_5y(ticker: str) -> list[float]:
 
 
 def get_last_n_annual_revenues(earnings: list, n: int = 5):
-    from collections import defaultdict
 
     revenues_by_year = defaultdict(dict)
 

@@ -23,9 +23,15 @@ export default function SiteHeader() {
         {/* Nav + Dark Toggle */}
         <div className="flex items-center gap-4">
           <nav className="flex items-center gap-6 text-sm">
-            <NavLink to="/" end className={linkCls}>Home</NavLink>
-            <NavLink to="/advanced-search" className={linkCls}>Advanced Search</NavLink>
-            <NavLink to="/compare" className={linkCls}>Compare</NavLink>
+            <NavLink to="/" end className={linkCls}>
+              Home
+            </NavLink>
+            <NavLink to="/advanced-search" className={linkCls}>
+              Advanced Search
+            </NavLink>
+            <NavLink to="/compare" className={linkCls}>
+              Compare
+            </NavLink>
           </nav>
 
           <button

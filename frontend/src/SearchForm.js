@@ -14,9 +14,7 @@ function SearchForm({ onSearch }) {
     <form onSubmit={handleSubmit} className="flex items-center justify-center gap-0 rounded overflow-hidden shadow">
       {/* Icon + Input */}
       <div className="relative w-72">
-        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg">
-          🔍
-        </span>
+        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg">🔍</span>
         <input
           type="text"
           value={input}

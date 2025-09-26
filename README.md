@@ -68,22 +68,28 @@ cd frontend && npm ci && npm start
 
 ## 6) Data ingestion
 
+**Init OpenSearch indices** (choose dev or prod compose file):
+```bash
+docker compose -f compose.[dev/prod].yml run --rm --no-deps  -v "$PWD/ingest:/app/ingest" ingest \
+  init_indices.py
+```
+
 **Seed tickers** (choose dev or prod compose file):
 ```bash
-docker compose -f compose.[dev/prod].yml run --rm --no-deps ingest \
-  seed_new_tickers.py tickers.txt 2015-01-01 2026-01-01
+docker compose -f compose.[dev/prod].yml run --rm --no-deps  -v "$PWD/ingest:/app/ingest" ingest \
+  seed_new_tickers.py /app/ingest/tickers.txt 2015-01-01 2026-01-01
 ```
 
 **Fetch latest prices**
 ```bash
-docker compose -f compose.[dev/prod].yml run --rm --no-deps ingest \
-  fetch_prices_wrapper.py tickers.txt
+docker compose -f compose.[dev/prod].yml run --rm --no-deps -v "$PWD/ingest:/app/ingest" ingest \
+  fetch_prices_wrapper.py /app/ingest/tickers.txt
 ```
 
 **Fetch latest earnings**
 ```bash
-docker compose -f compose.[dev/prod].yml run --rm --no-deps ingest \
-  fetch_earnings_wrapper.py tickers.txt
+docker compose -f compose.[dev/prod].yml run --rm --no-deps -v "$PWD/ingest:/app/ingest" ingest \
+  fetch_earnings_wrapper.py /app/ingest/tickers.txt
 ```
 
 ## License

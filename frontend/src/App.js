@@ -24,8 +24,8 @@ function HomePage() {
     const ctrl = new AbortController();
     api
       .get(`/stocks/${ticker}`, { signal: ctrl.signal })
-      .then(res => setStockData(res.data))
-      .catch(err => {
+      .then((res) => setStockData(res.data))
+      .catch((err) => {
         if (err.name !== "CanceledError" && err.message !== "canceled") {
           console.error("Error fetching stock data:", err);
         }
@@ -60,11 +60,7 @@ function HomePage() {
           <>
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-100">Daily Stock Price</h2>
-              <DailyPriceChart
-                dailyData={stockData.daily_prices}
-                range={priceRange}
-                setRange={setPriceRange}
-              />
+              <DailyPriceChart dailyData={stockData.daily_prices} range={priceRange} setRange={setPriceRange} />
             </div>
 
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">

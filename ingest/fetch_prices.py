@@ -39,7 +39,6 @@ def _safe_int(v):
 def _download_prices_help(tickers, start_date, end_date) -> pd.DataFrame:
     # Make yfinance end inclusive by adding 1 day
     end_exclusive = (pd.Timestamp(end_date) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
-
     try:
         df = yf.download(
             tickers,
@@ -218,10 +217,9 @@ def parse_args():
     p.add_argument("tickers", help="Comma-separated tickers, e.g. AAPL,MSFT,TSLA")
     p.add_argument("start_date", help="Inclusive start date, YYYY-MM-DD")
     p.add_argument("end_date", help="Inclusive end date, YYYY-MM-DD")
-    p.add_argument("-o",
-                   "--output",
-                   default=DEFAULT_OUTPUT_FILE,
-                   help=f"Output NDJSON file (default: {DEFAULT_OUTPUT_FILE})")
+    p.add_argument(
+        "-o", "--output", default=DEFAULT_OUTPUT_FILE, help=f"Output NDJSON file (default: {DEFAULT_OUTPUT_FILE})"
+    )
     return p.parse_args()
 
 

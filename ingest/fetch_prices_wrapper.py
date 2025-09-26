@@ -1,29 +1,158 @@
 #!/usr/bin/env python3
-import os, sys, argparse, json, datetime as dt
+import argparse
+import datetime as dt
+import json
+import os
+import sys
+
+from config import settings
+from fetch_prices import fetch_prices
 from opensearchpy import OpenSearch, helpers
 
 DEFAULT_INDEX = "stock_prices"
 DEFAULT_OUTPUT = "prices.ndjson"
+CONNECT_TIMEOUT = 3
 
 
-def os_client():
-    host = os.getenv("OS_HOST")
-    if not host:
-        raise SystemExit("Set OS_HOST (and optionally OS_USER/OS_PASS).")
-    user, pwd = os.getenv("OS_USER"), os.getenv("OS_PASS")
-    return OpenSearch(hosts=[host],
-                      http_auth=(user, pwd) if user and pwd else None,
-                      timeout=90,
-                      max_retries=3,
-                      retry_on_timeout=True,
-                      verify_certs=False,
-                      ssl_show_warn=False)
+def os_client() -> OpenSearch:
+    auth = None
+    if settings.OS_USER and settings.OS_PASS:
+        auth = (settings.OS_USER, settings.OS_PASS.get_secret_value())
+
+    client = OpenSearch(
+        hosts=[str(settings.OS_HOST)],
+        http_auth=auth,
+        timeout=CONNECT_TIMEOUT,
+        max_retries=3,
+        retry_on_timeout=True,
+        verify_certs=False,
+        ssl_show_warn=False,
+    )
+    return client
+
+
+import re
+
+
+def normalize_tickers(tickers):
+    if isinstance(tickers, str):
+        return [t for t in re.split(r"[,\s]+", tickers) if t]
+    return list(tickers)
+
+
+from typing import Any, Dict, List, Optional
+
+
+def latest_dates(
+    client,
+    tickers: List[str],
+    *,
+    index: str = "stock_prices",
+    ticker_field: str = "ticker",
+    date_field: str = "date",
+    page_size: int = 1000
+) -> List[Dict[str, Any]]:
+
+    print(tickers)
+    """
+    Return a list of { 'date': <YYYY-MM-DD or None>, 'tickers': [ ... ] } buckets,
+    where each bucket groups the provided tickers by their latest (max) date found
+    in the index. Tickers with no documents are grouped under date=None.
+
+    Example:
+    [
+      {"date": "2024-01-01", "tickers": ["GOOG", "AAPL"]},
+      {"date": None, "tickers": ["MISSING1"]}
+    ]
+    """
+    if not tickers:
+        return []
+
+    # Aggregate latest date per ticker (restricted to provided tickers)
+    buckets_map: Dict[Optional[str], List[str]] = {}
+    after_key = None
+
+    while True:
+        body = {
+            "size": 0,
+            "query": {
+                "bool": {
+                    "filter": [{
+                        "terms": {
+                            ticker_field: tickers
+                        }
+                    }]
+                }
+            },
+            "aggs": {
+                "by_ticker": {
+                    "composite": {
+                        "size": page_size,
+                        "sources": [{
+                            "ticker": {
+                                "terms": {
+                                    "field": ticker_field
+                                }
+                            }
+                        }],
+                    },
+                    "aggs": {
+                        "last_seen": {
+                            "max": {
+                                "field": date_field
+                            }
+                        }
+                    },
+                }
+            },
+        }
+        if after_key:
+            body["aggs"]["by_ticker"]["composite"]["after"] = after_key
+        resp = client.search(index=index, body=body)
+        comp = resp["aggregations"]["by_ticker"]
+        for b in comp["buckets"]:
+            tkr = b["key"]["ticker"]
+            # value_as_string is ISO datetime; we only need YYYY-MM-DD
+            v = b["last_seen"].get("value_as_string")
+            date_key: Optional[str] = v[:10] if v else None
+            buckets_map.setdefault(date_key, []).append(tkr)
+
+        after_key = comp.get("after_key")
+        if not after_key:
+            break
+
+    # Ensure every requested ticker appears (missing tickers => date=None)
+    seen = {t for lst in buckets_map.values() for t in lst}
+    for t in tickers:
+        if t not in seen:
+            buckets_map.setdefault(None, []).append(t)
+
+    # Build sorted list of {date, tickers}; put None last; sort tickers for determinism
+    dates = [d for d in buckets_map.keys() if d is not None]
+    dates.sort(reverse=True)  # newest first
+
+    # Returns comma separated list of tickers
+    def format_tickers(ts: List[str]):
+        ts = sorted(ts)
+        return ",".join(ts)
+
+    result: List[Dict[str, Any]] = [{"date": d, "tickers": format_tickers(buckets_map[d])} for d in dates]
+    if None in buckets_map:
+        result.append({"date": None, "tickers": format_tickers(buckets_map[None])})
+
+    # Returns list of tickers
+    #result: List[Dict[str, Any]] = [{"date": d, "tickers": sorted(buckets_map[d])} for d in dates]
+    #if None in buckets_map:
+    #    result.append({"date": None, "tickers": sorted(buckets_map[None])})
+
+    return result
 
 
 def latest_date(client, index: str, date_field: str = "date") -> str | None:
     if not client.indices.exists(index=index):
         return None
-    body = {"size": 0, "aggs": {"max_date": {"max": {"field": date_field}}}}
+
+    body = {"size": 0, "query": {"term": {"ticker": ticker}}, "aggs": {"max_date": {"max": {"field": "date_field"}}}}
     resp = client.search(index=index, body=body, request_timeout=60)
     val = resp.get("aggregations", {}).get("max_date", {}).get("value_as_string")
     return val[:10] if val else None
@@ -74,27 +203,28 @@ def main():
     args = parse_args()
     client = os_client()
 
-    # Determine date range
-    end = args.end_date or dt.date.today().strftime("%Y-%m-%d")
-    if args.start_date:
-        start = args.start_date
-    else:
-        latest = latest_date(client, args.index, "date")
-        if latest:
-            start = plus_one(latest)
-        else:
-            raise SystemExit("Index empty. Provide --start-date for initial backfill.")
-
     tickers_csv = load_tickers(args.tickers)
-    print(f"[PRICES] {tickers_csv[:80]}{'...' if len(tickers_csv)>80 else ''} {start}..{end}")
+    tickers_list = normalize_tickers(tickers_csv)
 
-    # Call your existing fetcher
-    import fetch_prices
-    fetch_prices.fetch_prices(tickers_csv, start, end, output_file=args.output)
-
-    # Index to OpenSearch
-    added = index_ndjson(client, args.index, args.output)
-    print(f"[INDEX] Wrote {added} docs to '{args.index}'")
+    # Determine date range
+    end_date = args.end_date or dt.date.today().strftime("%Y-%m-%d")
+    if args.start_date:
+        buckets = [{"date": args.start_date, "tickers": ticket_list}]
+    else:
+        buckets = latest_dates(client, tickers_list)
+    #print(json.dumps(buckets, indent=2))
+    for bucket in buckets:
+        start_date = bucket["date"]
+        if start_date:
+            start_date = plus_one(start_date)
+            tickers = bucket["tickers"]
+            print(
+                f"[PRICES] {bucket['tickers'][:80]}{'...' if len(bucket['tickers'])>80 else ''} {start_date}..{end_date}"
+            )
+            if start_date and start_date <= dt.date.today().strftime("%Y-%m-%d") and start_date <= end_date:
+                fetch_prices(bucket["tickers"], bucket["date"], end_date, output_file=args.output)
+                added = index_ndjson(client, args.index, args.output)
+                print(f"[INDEX] Wrote {added} docs to '{args.index}'")
 
     if args.run_summary:
         os.system(f"{sys.executable} update_stock_summary.py")
