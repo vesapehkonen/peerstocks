@@ -12,8 +12,8 @@ services:
       - "9200:9200"
       - "9600:9600"
     volumes:
-      - ${OPENSEARCH_DATA_DIR:-./opensearch/data}:/usr/share/opensearch/data
-      - ${OPENSEARCH_LOG_DIR:-./opensearch/logs}:/usr/share/opensearch/logs
+      - $OS_DATA_DIR:/usr/share/opensearch/data
+      - $OS_LOG_DIR:/usr/share/opensearch/logs
     ulimits:
       memlock: { soft: -1, hard: -1 }
       nofile:  { soft: 65536, hard: 65536 }
@@ -22,19 +22,15 @@ services:
 
   backend:
     image: backend:latest
-    env_file: ./env/development/backend.env
-    environment:
-      OS_HOST: http://opensearch:9200
+    env_file: ./.env
     ports:
       - "8000:8000"
 
-# Frontend: run with `npm start` outside Docker (your preference)
-
   ingest:
     image: ingest:latest
-    env_file: ./env/development/ingest.env   # OS_HOST can be http://opensearch:9200
-    environment:
-      OS_HOST: http://opensearch:9200
+    env_file: ./.env
     profiles: ["jobs"]
     restart: "no"
     entrypoint: [ "python" ]
+
+# Frontend: run with `npm start` outside Docker (your preference)

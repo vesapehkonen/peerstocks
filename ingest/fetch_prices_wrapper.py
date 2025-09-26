@@ -4,6 +4,7 @@ import datetime as dt
 import json
 import os
 import sys
+from zoneinfo import ZoneInfo
 
 from config import settings
 from fetch_prices import fetch_prices
@@ -207,22 +208,24 @@ def main():
     tickers_list = normalize_tickers(tickers_csv)
 
     # Determine date range
-    end_date = args.end_date or dt.date.today().strftime("%Y-%m-%d")
+    end_date = dt.date.fromisoformat(args.end_date) if args.end_date else dt.date.today()
+
     if args.start_date:
-        buckets = [{"date": args.start_date, "tickers": ticket_list}]
+        buckets = [{"date": args.start_date, "tickers": tickers_list}]
     else:
         buckets = latest_dates(client, tickers_list)
-    #print(json.dumps(buckets, indent=2))
+
     for bucket in buckets:
-        start_date = bucket["date"]
-        if start_date:
-            start_date = plus_one(start_date)
+        start_date_str = bucket["date"]
+        if start_date_str:
+            # parse and advance one day to avoid re-fetching the last indexed date
+            start_date = dt.date.fromisoformat(start_date_str) + dt.timedelta(days=1)
             tickers = bucket["tickers"]
             print(
-                f"[PRICES] {bucket['tickers'][:80]}{'...' if len(bucket['tickers'])>80 else ''} {start_date}..{end_date}"
+                f"[PRICES] {tickers[:80]}{'...' if len(tickers)>80 else ''} {start_date.isoformat()}..{end_date.isoformat()}"
             )
-            if start_date and start_date <= dt.date.today().strftime("%Y-%m-%d") and start_date <= end_date:
-                fetch_prices(bucket["tickers"], bucket["date"], end_date, output_file=args.output)
+            if start_date <= dt.date.today() and start_date <= end_date:
+                fetch_prices(tickers, start_date.isoformat(), end_date.isoformat(), output_file=args.output)
                 added = index_ndjson(client, args.index, args.output)
                 print(f"[INDEX] Wrote {added} docs to '{args.index}'")
 

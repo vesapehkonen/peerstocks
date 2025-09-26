@@ -96,6 +96,15 @@ command -v curl >/dev/null 2>&1 || die "curl is required"
 
 read -r -p "Build docker images (Y/N): " do_build; echo
 
+# build docker images
+if [[ "$do_build" == "Y" || "$do_build" == "y" ]]; then
+  docker build -t backend:latest   backend
+  docker build -t ingest:latest    ingest
+  docker build -t frontend:latest  --build-arg REACT_APP_API_BASE_URL=/api frontend
+fi
+
+export $(grep -v '^#' ./.env | xargs)
+
 # --- Prompt for required API keys if not set ---
 if [[ -z "${OPENAI_API_KEY:-}" ]]; then
   read -r -s -p "Enter OPENAI_API_KEY: " OPENAI_API_KEY; echo
@@ -112,13 +121,6 @@ fi
 export OPENAI_API_KEY
 export POLYGON_API_KEY
 
-# build docker images
-if [[ "$do_build" == "Y" || "$do_build" == "y" ]]; then
-  docker build -t backend:latest   backend
-  docker build -t ingest:latest    ingest
-  docker build -t frontend:latest  --build-arg REACT_APP_API_BASE_URL=/api frontend
-fi
-
 # Fresh empty OpenSearch data/logs
 log "Preparing empty OpenSearch data/log directories under $SMOKE_DIR ..."
 rm -rf "$OS_DATA_DIR" "$OS_LOG_DIR"
@@ -133,10 +135,6 @@ AAPL
 MSFT
 EOF
 fi
-
-# Export OpenSearch dir envs so compose picks them up if referenced
-export OPENSEARCH_DATA_DIR="$OS_DATA_DIR"
-export OPENSEARCH_LOG_DIR="$OS_LOG_DIR"
 
 # Start/refresh containers
 log "(re)starting dev stack via $COMPOSE_FILE ..."
@@ -157,7 +155,6 @@ log "OpenSearch is up."
 # Initialize indices
 log "Init OpenSearch indices ..."
 docker compose -f "$COMPOSE_FILE" run --rm --no-deps -v "$PWD/ingest:/app/ingest" ingest init_indices.py
-#. ~/.venv/bin/activate && python ingest/init_indices.py
 
 # Seed a small set of tickers with an older date range so newer updates can be fetched later
 log "Seeding tickers (older date range) ..."

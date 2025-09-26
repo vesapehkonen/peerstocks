@@ -12,7 +12,7 @@ DEFAULT_OUTPUT_FILE = "earnings.json"
 # ────────────────────────────────────────────────────────────────────────────────
 
 
-def polygon_get(url, api_key, max_retries=5, sleep_base=2):
+def polygon_get(url, api_key, max_retries=10, sleep_base=2):
     """GET with basic retry & better error messages."""
     headers = {"Accept": "application/json"}
     for attempt in range(max_retries):

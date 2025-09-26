@@ -11,10 +11,10 @@ services:
       OPENSEARCH_JAVA_OPTS: "-Xms1g -Xmx1g"
       DISABLE_SECURITY_PLUGIN: "false"
       DISABLE_INSTALL_DEMO_CONFIG: "false"
-      OPENSEARCH_INITIAL_ADMIN_PASSWORD: $OPENSEARCH_INITIAL_ADMIN_PASSWORD
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: "${OS_PASS}"
     volumes:
-      - ${OPENSEARCH_DATA_DIR:-./opensearch/data}:/usr/share/opensearch/data
-      - ${OPENSEARCH_LOG_DIR:-./opensearch/logs}:/usr/share/opensearch/logs
+      - $OS_DATA_DIR:/usr/share/opensearch/data
+      - $OS_LOG_DIR:/usr/share/opensearch/logs
     networks: [appnet]
     ulimits:
       memlock: { soft: -1, hard: -1 }
@@ -24,23 +24,22 @@ services:
 
   backend:
     image: backend:latest
-    env_file: ./env/production/backend.env
+    env_file: ./.env
     expose:
       - "8000"
     networks: [appnet]
 
   frontend:
-    image: frontend:latest   # your NGINX image that proxies /api -> http://backend:8000/
+    image: frontend:latest   # NGINX image that proxies /api -> http://backend:8000/
     depends_on: [backend]
     networks: [appnet]
     ports:
-      - "80:80"            # expose only the web entrypoint
+      - "80:80"              # expose only the web entrypoint
 
   ingest:
     image: ingest:latest
-    env_file: ./env/production/ingest.env
+    env_file: ./.env
     networks: [appnet]
     profiles: ["jobs"]        # keeps it out of 'up -d' by default
     restart: "no"             # batch job; don't restart
-    # you can keep a neutral entrypoint (python) and override the command at run time if you like
     entrypoint: [ "python" ]
