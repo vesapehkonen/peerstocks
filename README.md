@@ -1,7 +1,7 @@
 
 # PeerStocks
 
-[![Live Demo](https://img.shields.io/badge/demo-online-green.svg)](https://peerstocks.example.com)
+[![Live Demo](https://img.shields.io/badge/demo-online-green.svg)](https://peerstocks.com)
 
 A peer comparison dashboard for equities. Add multiple tickers and compare their *Price (indexed)*, *P/E*, and *EPS (TTM)* at a glance.  
 Backend API + ingest jobs + OpenSearch for data; React frontend for the UI.
@@ -10,7 +10,7 @@ Backend API + ingest jobs + OpenSearch for data; React frontend for the UI.
 
 ## Demo
 
-🚀 Try it live here: [peerstocks.example.com](https://peerstocks.example.com)
+🚀 Try it live here: [peerstocks.com](https://peerstocks.com)
 
 
 ## Features
