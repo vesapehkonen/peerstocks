@@ -1,0 +1,77 @@
+{
+  "stock_metadata" : {
+    "mappings": {
+      "properties": {
+        "ticker": {
+          "type": "keyword"
+        },
+        "name": {
+          "type": "text"
+        },
+        "market": {
+          "type": "keyword"
+        },
+        "locale": {
+          "type": "keyword"
+        },
+        "primary_exchange": {
+          "type": "keyword"
+        },
+        "type": {
+          "type": "keyword"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "currency_name": {
+          "type": "keyword"
+        },
+        "share_class_shares_outstanding": {
+          "type": "long"
+        },
+        "weighted_shares_outstanding": {
+          "type": "long"
+        },
+        "sic_code": {
+          "type": "keyword"
+        },
+        "sic_description": {
+          "type": "text"
+        },
+        "sic_sector": {
+          "type": "keyword"
+        },
+        "sector": {
+          "type": "keyword"
+        },
+        "industry": {
+          "type": "keyword"
+        },
+        "homepage_url": {
+          "type": "keyword",
+          "index": false
+        },
+        "description": {
+          "type": "text"
+        },
+        "updated_utc": {
+          "type": "date",
+          "format": "strict_date_optional_time||epoch_millis"
+        },
+        "source": {
+          "properties": {
+            "provider": {
+              "type": "keyword"
+            },
+            "as_of": {
+              "type": "keyword"
+            },
+            "sector_derived_from_sic": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -38,34 +38,93 @@ def healthz():
     return {"ok": True}
 
 
-@app.get("/api/ai-summary/{ticker}")
-def generate_stock_summary(ticker: str):
+@app.get("/api/ai-summary_NW/{ticker}")
+def generate_stock_summary_NEW(ticker: str):
     if not settings.OPENAI_API_KEY:
         return {"summary": "AI summary is disabled on this server."}
-    earnings = fetch_earnings(ticker.upper())
 
-    if not earnings:
-        return {"summary": "No earnings data available to summarize."}
+    tkr = ticker.upper()
 
-    # Take last 4 earnings entries
-    lines = []
+    # --- Gather context ---
+    earnings = fetch_earnings(tkr) or []
+    # You implement these: use a news/market API (e.g., Finnhub, Polygon, Alpha Vantage, Yahoo)
+    price = fetch_price_window(tkr, window_days=5)         # {change_pct, volume_vs_avg, sector_move_pct, teny_bps, notes}
+    news = fetch_top_news(tkr, limit=5)                    # [{"id":"n1","date":"YYYY-MM-DD","headline":"..","summary":"..","link":".."}]
+    actions = fetch_analyst_actions(tkr, days=14)          # [{"id":"a1","date":"..","action":"downgrade","broker":"..","pt_change":"-10%"}]
+
+    # format last 4 earnings
+    last4 = []
     for doc in earnings[-4:]:
         src = doc["_source"]
-        date = src.get("end_date", "N/A")
-        eps = src.get("diluted_eps", "N/A")
-        revenue = src.get("revenues", "N/A")
-        lines.append(f"- {date}: EPS = {eps}, Revenue = {revenue}")
+        last4.append({
+            "period": src.get("end_date","N/A"),
+            "revenue": src.get("revenues","N/A"),
+            "eps": src.get("diluted_eps","N/A"),
+            "gm": src.get("gross_margin_pct","N/A"),
+            "notes": src.get("notes","")
+        })
 
-    metrics_text = "\n".join(lines)
+    context = {
+        "as_of": datetime.date.today().isoformat(),
+        "ticker": tkr,
+        "window": "5D",
+        "price_action": price,
+        "earnings_trend": last4,
+        "news": news,
+        "analyst_actions": actions
+    }
 
-    prompt = f"""
-You are a financial assistant analyzing stock performance for a retail investor. Based on the following recent financial data for {ticker}, write a clear and concise summary of key trends.
+    system_prompt = (
+        "You are a markets analyst. Explain WHY the stock moved or earnings trend changed, "
+        "based ONLY on the provided context. Rank the strongest drivers first and tie each to a mechanism. "
+        "State uncertainty if evidence is thin. Then give an up/down/neutral view for SHORT term (days–weeks) "
+        "and LONG term (12+ months) with 1–2 reasons each. Not investment advice. "
+        "HARD LIMIT: Max 500 characters. No bullets. No newlines."
+    )
 
-Financial data:
-{metrics_text}
+    user_prompt = f"<CONTEXT>\n{json.dumps(context, ensure_ascii=False)}\n</CONTEXT>\n" \
+                  "Return a single paragraph under 500 characters."
 
-If relevant, highlight any seasonal patterns (e.g., strong Q4 results), recent volatility, or sustained growth. If provided, refer to the P/E ratio to comment on valuation (but do not give investment advice). Use plain English. Limit your response to 3–4 sentences and under 100 words. Avoid bullet points.
-"""
+    try:
+        resp = openai_client.chat.completions.create(
+            model=settings.OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.3,
+        )
+        text = (resp.choices[0].message.content or "").strip()
+
+        # Enforce the 500-character cap (letters limit) and strip newlines
+        text = " ".join(text.split())
+        if len(text) > 500:
+            text = text[:497].rstrip() + "…"
+
+        return {"summary": text or "No AI summary available right now."}
+    except Exception as e:
+        return {"summary": f"Failed to generate summary: {e}"}
+
+
+@app.get("/api/ai-summary/{ticker}")
+def generate_stock_summary(ticker: str):
+
+    prompt = (
+        f"You are a market analyst. Ticker is {ticker}. Use common, simple language. "
+        "Explain WHY the stock moved or earnings trend changed. "
+        "Then give an up/down/neutral view for SHORT term (days–weeks) and LONG term (12+ months). "
+        "HARD LIMIT: 500 characters MAX. "
+        "OUTPUT RULES:"
+        "- Plain text, one paragraph, ≤500 characters."
+        "- Write at a 9th grade reading level."
+        "- Use simple English words only."
+        "- No technical terms, no buzzwords, no slang."
+        "- Expand or explain any required acronyms."
+        "- Avoid long sentences or complex grammar."
+        "- plain text only, no images, charts, tables, bullet points, or code blocks. "
+        "Also say if it’s a good buy now."
+    )
+    
     try:
         response = openai_client.chat.completions.create(
             model=settings.OPENAI_MODEL, messages=[{
@@ -79,15 +138,15 @@ If relevant, highlight any seasonal patterns (e.g., strong Q4 results), recent v
             return {"summary": "No AI summary available right now."}
 
         # Optional fallback post-trim
-        if full_summary.count(".") > 4 or len(full_summary.split()) > 120:
-            short_prompt = f"Rewrite this to 100 words or less:\n\n{full_summary}"
-            retry = openai_client.chat.completions.create(
-                model=settings.OPENAI_MODEL, messages=[{
-                    "role": "user",
-                    "content": short_prompt
-                }], temperature=1
-            )
-            return {"summary": retry.choices[0].message.content.strip()}
+        #if full_summary.count(".") > 4 or len(full_summary.split()) > 120:
+        #    short_prompt = f"Rewrite this to 100 words or less:\n\n{full_summary}"
+        #    retry = openai_client.chat.completions.create(
+        #        model=settings.OPENAI_MODEL, messages=[{
+        #            "role": "user",
+        #            "content": short_prompt
+        #        }], temperature=1
+        #    )
+        #    return {"summary": retry.choices[0].message.content.strip()}
 
         return {"summary": full_summary}
 
@@ -173,10 +232,25 @@ def get_stock_data(ticker: str):
             "date": "asc"
         }]
     }
+
+    # Fetch metadata from stock_metadata
+    meta_query = {
+        "size": 1,
+        "query": {"term": {"ticker": ticker.upper()}}
+    }
+    meta_data = run_opensearch_query(os_client, "stock_metadata", meta_query)
+    metadata = meta_data[0]["_source"] if meta_data else {}
+    
     price_data = run_opensearch_query(os_client, "stock_prices", price_query)
     daily_prices = [{"date": doc["_source"]["date"], "price": doc["_source"]["close"]} for doc in price_data]
     print(f"Returned: quarterly.lenght: {len(result)} daily_prices.length: {len(daily_prices)}")
-    return {"quarterly": result, "daily_prices": daily_prices}
+
+    #resp = {"metadata": metadata, "quarterly": result, "daily_prices": daily_prices}
+    #import json
+    #print(json.dumps(metadata, indent=2))
+    #print(json.dumps(resp, indent=2))
+
+    return {"metadata": metadata, "quarterly": result, "daily_prices": daily_prices}
 
 
 from typing import List

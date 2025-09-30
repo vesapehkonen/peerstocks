@@ -5,6 +5,7 @@ import DailyPriceChart from "./DailyPriceChart";
 import StockCharts from "./StockCharts";
 import StockTable from "./StockTable";
 import api from "./api";
+import StockHeader from "./StockHeader";
 
 function StockDetailsPage() {
   const { ticker } = useParams();
@@ -28,10 +29,21 @@ function StockDetailsPage() {
   }, [ticker]);
 
   return (
-    <div className="max-w-5xl mx-auto bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6 text-center">📊 {ticker} Stock Details</h1>
+  <div className="max-w-5xl mx-auto bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 py-8 px-4">
+    <h1 className="text-3xl font-bold mb-6 text-center">📊 {ticker} Stock Details</h1>
+
+    {/* ONE parent controls spacing between all cards */}
+    <div className="space-y-4">
+      {stockData && (
+        <StockHeader
+          ticker={ticker}
+          metadata={stockData.metadata}
+          dailyPrices={stockData.daily_prices}
+        />
+      )}
+
       {summary !== null && (
-        <div className="bg-yellow-100 dark:bg-yellow-800 text-yellow-900 dark:text-yellow-100 rounded p-4 shadow mb-6">
+        <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded p-4 shadow">
           <h2 className="text-lg font-bold mb-2">🧠 AI Summary</h2>
           <p className="text-sm whitespace-pre-line">
             {String(summary).trim() || "No AI summary available right now."}
@@ -40,10 +52,14 @@ function StockDetailsPage() {
       )}
 
       {stockData?.quarterly?.length > 0 && (
-        <div className="space-y-8">
+        <>
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-700">Daily Stock Price</h2>
-            <DailyPriceChart dailyData={stockData.daily_prices} range={priceRange} setRange={setPriceRange} />
+            <DailyPriceChart
+              dailyData={stockData.daily_prices}
+              range={priceRange}
+              setRange={setPriceRange}
+            />
           </div>
 
           <div className="bg-white shadow rounded-lg p-6">
@@ -60,10 +76,11 @@ function StockDetailsPage() {
             <h2 className="text-xl font-semibold mb-4 text-gray-700">Key Financials</h2>
             <StockTable data={stockData.quarterly} />
           </div>
-        </div>
+        </>
       )}
     </div>
-  );
+  </div>
+);
 }
 
 export default StockDetailsPage;

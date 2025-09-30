@@ -8,11 +8,13 @@ from opensearchpy import OpenSearch
 DEFAULT_EARNINGS_INDEX = "earnings_data"
 DEFAULT_PRICES_INDEX = "stock_prices"
 DEFAULT_SUMMARY_INDEX = "stock_summary"
+DEFAULT_METADATA_INDEX = "stock_metadata"
 
 MAPPING_FILES = [
     "earnings_data.mapping.json",
     "stock_prices.mapping.json",
     "stock_summary.mapping.json",
+    "stock_metadata.mapping.json",
 ]
 
 CONNECT_TIMEOUT = 3

@@ -208,9 +208,7 @@ function AdvancedSearch() {
 
             <div>
               <h2 className="text-lg font-semibold mb-2">Sectors</h2>
-              <div className="opacity-70">
-                {" "}
-                {/*  when this feature is implemented remove this */}
+
                 <select
                   multiple
                   value={selectedSectors}
@@ -219,7 +217,7 @@ function AdvancedSearch() {
                     setSelectedSectors(selected);
                   }}
                   className="w-full p-2 text-sm border rounded dark:bg-gray-700 dark:text-white h-32"
-                  disabled /*  when this feature is implemented remove this line */
+
                 >
                   {sectors.map((s) => (
                     <option key={s} value={s}>
@@ -228,8 +226,8 @@ function AdvancedSearch() {
                   ))}
                 </select>
                 <p className="text-sm text-gray-500 mt-1">Hold Ctrl (or Cmd) to select multiple.</p>
-              </div>{" "}
-              {/*  when this feature is implemented remove this */}
+
+
             </div>
           </div>
         </div>

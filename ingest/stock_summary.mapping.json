@@ -42,6 +42,9 @@
         },
         "ttm_pe_ratio" : {
           "type" : "double"
+        },
+        "sector": {
+          "type": "keyword"
         }
       }
     }

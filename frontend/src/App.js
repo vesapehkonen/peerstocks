@@ -11,6 +11,7 @@ import StockDetailsPage from "./StockDetailsPage";
 import ComparePage from "./ComparePage";
 import SiteHeader from "./SiteHeader";
 import TrendingTickers from "./TrendingTickers";
+import StockHeader from "./StockHeader";
 import api from "./api";
 
 function HomePage() {
@@ -58,6 +59,19 @@ function HomePage() {
       <div className="space-y-8">
         {stockData?.quarterly?.length > 0 && (
           <>
+
+
+      {stockData && (
+        <StockHeader
+          ticker={ticker}
+          metadata={stockData.metadata}
+          dailyPrices={stockData.daily_prices}
+        />
+      )}
+
+
+
+
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-100">Daily Stock Price</h2>
               <DailyPriceChart dailyData={stockData.daily_prices} range={priceRange} setRange={setPriceRange} />

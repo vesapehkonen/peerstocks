@@ -6,11 +6,13 @@ import sys
 
 import fetch_earnings
 import fetch_prices
+import fetch_stock_metadata
 from config import settings
 from opensearchpy import OpenSearch, helpers
 
 DEFAULT_EARNINGS_INDEX = "earnings_data"
 DEFAULT_PRICES_INDEX = "stock_prices"
+DEFAULT_METADATA_INDEX = "stock_metadata"
 CONNECT_TIMEOUT = 3
 
 
@@ -49,6 +51,7 @@ def seed(tickers, start_date, end_date, polygon_api_key, run_summary):
 
     prices_out = "prices_seed.ndjson"
     earnings_out = "earnings_seed.ndjson"
+    metadata_out = "metadata_seed.ndjson"
 
     print(f"[SEED] Prices {tickers} {start_date}..{end_date}")
     fetch_prices.fetch_prices(tickers, start_date, end_date, output_file=prices_out)
@@ -63,6 +66,11 @@ def seed(tickers, start_date, end_date, polygon_api_key, run_summary):
     fetch_earnings.fetch_earnings(tickers, start_date, end_date, polygon_api_key, earnings_out)
     print(f"[INDEX] {earnings_out} -> {DEFAULT_EARNINGS_INDEX}")
     helpers.bulk(client, actions_from_ndjson(earnings_out), index=DEFAULT_EARNINGS_INDEX)
+
+    print(f"[SEED] Metadata {tickers}")
+    fetch_stock_metadata.fetch_stock_metadata(tickers, polygon_api_key, metadata_out)
+    print(f"[INDEX] {metadata_out} -> {DEFAULT_METADATA_INDEX}")
+    helpers.bulk(client, actions_from_ndjson(metadata_out), index=DEFAULT_METADATA_INDEX)
 
     if run_summary:
         print("[SUMMARY] update_stock_summary.py …")

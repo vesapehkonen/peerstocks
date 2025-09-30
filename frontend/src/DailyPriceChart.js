@@ -62,10 +62,10 @@ export default function DailyPriceChart({ dailyData, range, setRange }) {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="date"
-                tickFormatter={(d) => dayjs(d).format("MM/DD")}
+                tickFormatter={(d) => dayjs(d).format("YYYY-MM")}
                 angle={-45}
                 textAnchor="end"
-                height={40}
+                height={60}
               />
               <YAxis domain={yDomain} tickFormatter={(val) => val.toFixed(0)} />
               <Tooltip />

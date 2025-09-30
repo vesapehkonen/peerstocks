@@ -1,6 +1,7 @@
 import json
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Dict
 
 from config import settings
 from opensearchpy import OpenSearch
@@ -27,6 +28,29 @@ def os_client() -> OpenSearch:
 
 
 _CLIENT = os_client()
+
+def fetch_sector_map() -> Dict[str, str]:
+    """
+    Load sectors for all tickers from stock_metadata.
+    Prefers _source['ticker'] and falls back to _id as the key.
+    """
+    query = {
+        "size": 10000,
+        "_source": ["ticker", "sector"],
+        "query": {"match_all": {}},
+        "sort": [{"_id": "asc"}],
+    }
+    try:
+        resp = _search("stock_metadata", query)
+        hits = resp.get("hits", {}).get("hits", [])
+        sector_map: Dict[str, str] = {}
+        for h in hits:
+            src = h.get("_source", {}) or {}
+            key = (src.get("ticker") or h.get("_id") or "").upper()
+            if key: sector_map[key] = src.get("sector")
+        return sector_map
+    except Exception:
+        return {}
 
 
 # Small helpers to match prior behavior
@@ -272,7 +296,12 @@ def update():
     tickers = fetch_all_tickers()
     print(f"Found {len(tickers)} tickers")
 
+    # Load sectors once per run (slow-changing metadata)
+    sector_map = fetch_sector_map()
+    print(f"Loaded sectors for {len(sector_map)} tickers from stock_metadata")
+    
     for ticker in tickers:
+        tkr_key = ticker.upper()
         prices = fetch_prices(ticker)
         earnings = fetch_earnings(ticker)
 
@@ -299,6 +328,11 @@ def update():
         doc["price_history"] = get_price_trend_5y(ticker)
         doc["revenue_history"] = get_last_n_annual_revenues(earnings)
 
+        # Attach sector from stock_metadata (if available)
+        sector = sector_map.get(tkr_key)
+        if sector:
+            doc["sector"] = sector
+        
         if doc:
             index_summary_doc(ticker, doc)
 

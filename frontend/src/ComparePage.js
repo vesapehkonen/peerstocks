@@ -186,6 +186,20 @@ const fmtNum = (v) => {
   return String(+v.toFixed(2));
 };
 
+const fmtMonthYear = (d) => {
+  const dt = toDate(d);
+  return Number.isFinite(+dt)
+    ? dt.toLocaleDateString(undefined, { month: "short", year: "numeric" }) // e.g., "Jan 2023"
+    : "";
+};
+
+const fmtFullDate = (d) => {
+  const dt = toDate(d);
+  return Number.isFinite(+dt)
+    ? dt.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" }) // e.g., "Jan 05, 2023"
+    : String(d ?? "");
+};
+
 function useCompareUrlState(opts) {
   const getParams = useCallback(() => new URLSearchParams(window.location.search), []);
 
@@ -459,13 +473,24 @@ function MergedPriceChart({ derived, range, colors, hidden, onLegend }) {
           <LineChart
             key={`price-${range}`}
             data={data}
-            syncId={syncId}
+            syncId="cmp-price"
             margin={{ top: 8, right: 18, left: 8, bottom: 0 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" type="category" hide />
+
+            <XAxis
+              dataKey="date"
+              type="category"
+              tickFormatter={fmtMonthYear}
+              minTickGap={28}   // prevents crowding
+              tickMargin={8}
+            />
             <YAxis tickFormatter={fmtPctFrom100} domain={["auto", "auto"]} width={60} />
-            <Tooltip formatter={(v) => fmtPctFrom100(Number(v))} />
+            <Tooltip
+              labelFormatter={fmtFullDate}
+              formatter={(v) => fmtPctFrom100(Number(v))}
+            />
+
             <Legend onClick={(e) => onLegend(e?.value)} onDoubleClick={(e) => onLegend(e?.value, true)} />
             {derived.map((s) => (
               <Line
@@ -532,14 +557,29 @@ function MergedPEChart({ derived, range, colors, hidden, onLegend, clipPE }) {
           <LineChart
             key={`pe-${range}-${clipPE}`}
             data={data}
-            syncId={syncId}
+            syncId="cmp-pe"
             margin={{ top: 8, right: 18, left: 8, bottom: 0 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
             {/* avoid duplicate date categories when series have different date sets */}
-            <XAxis dataKey="date" type="category" hide allowDuplicatedCategory={false} />
-            <YAxis domain={domain} width={50} />
-            <Tooltip formatter={(v) => fmtNum(Number(v))} />
+            <XAxis
+              dataKey="date"
+              type="category"
+              tickFormatter={fmtMonthYear}
+              minTickGap={28}   // prevents crowding
+              tickMargin={8}
+            />
+            <YAxis
+              domain={domain}
+              width={50}
+              tickFormatter={(v) => fmtNum(Number(v))}
+              allowDecimals
+            />
+            <Tooltip
+              labelFormatter={fmtFullDate}
+              formatter={(v) => fmtNum(Number(v))}
+            />
+
             <Legend onClick={(e) => onLegend(e?.value)} onDoubleClick={(e) => onLegend(e?.value, true)} />
             {derived.map((s) => (
               <Line
@@ -590,7 +630,6 @@ function EPSGrid({ derived, range, colors }) {
                   <BarChart
                     key={`eps-${d.t}-${range}`}
                     data={d.eps}
-                    syncId="cmp"
                     margin={{ top: 4, right: 8, left: 8, bottom: 0 }}
                     barCategoryGap="15%" // increase category spacing (visually narrower bars)
                     barGap={0} // no gap (only one series)
@@ -599,6 +638,7 @@ function EPSGrid({ derived, range, colors }) {
                     <YAxis domain={["auto", "auto"]} width={40} />
                     <Tooltip formatter={(v) => fmtNum(Number(v))} />
                     <Bar
+                      name="EPS" 
                       dataKey="v"
                       fill={colors[d.t]}
                       isAnimationActive={false}
