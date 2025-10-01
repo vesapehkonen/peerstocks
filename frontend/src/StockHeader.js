@@ -1,6 +1,6 @@
 // StockHeader.js
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 
 function formatNumber(num) {
   if (num == null) return null;
@@ -21,6 +21,29 @@ function StatInline({ label, value }) {
 
 export default function StockHeader({ ticker, metadata, dailyPrices }) {
   const [showDesc, setShowDesc] = useState(false);
+  const resolvedTicker = useMemo(
+    () => (metadata?.ticker || ticker || "").toUpperCase(),
+    [metadata?.ticker, ticker]
+  );
+  // Build a small cascade of logo sources (Clearbit → DuckDuckGo → site's favicon)
+  const logoSources = useMemo(() => {
+    const url = metadata?.homepage_url;
+    if (!url) return [];
+    try {
+      const { hostname } = new URL(url);
+      const domain = hostname.replace(/^www\./, "");
+      return [
+        `https://logo.clearbit.com/${domain}`,
+        `https://icons.duckduckgo.com/ip3/${domain}.ico`,
+        `https://${domain}/favicon.ico`,
+      ];
+    } catch {
+      return [];
+    }
+  }, [metadata?.homepage_url]);
+  const [logoIdx, setLogoIdx] = useState(0);
+  useEffect(() => setLogoIdx(0), [resolvedTicker, metadata?.homepage_url]);
+  const currentLogo = logoSources[logoIdx] || null;
 
   const snapshot = useMemo(() => {
     if (!Array.isArray(dailyPrices) || dailyPrices.length === 0) return {};
@@ -48,13 +71,27 @@ export default function StockHeader({ ticker, metadata, dailyPrices }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Identity */}
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800 grid place-items-center text-xs font-bold">
-            {ticker?.slice(0, 4)}
+          <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800 grid place-items-center text-xs font-bold overflow-hidden">
+            {currentLogo ? (
+              <img
+                src={currentLogo}
+                alt={`${metadata?.name || resolvedTicker} logo`}
+                className="h-full w-full object-contain"
+                onError={() => setLogoIdx((i) => i + 1)}
+                loading="lazy"
+              />
+            ) : (
+              resolvedTicker.slice(0, 4)
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg font-semibold">{metadata?.name || ticker}</h2>
-              <span className="px-2 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-800">{ticker}</span>
+              <h2 className="text-lg font-semibold">{metadata?.name || resolvedTicker}</h2>
+              {metadata?.name && (
+                <span className="px-2 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-800">
+                  {resolvedTicker}
+                </span>
+              )}
               {metadata?.primary_exchange && (
                 <span className="px-2 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-800">
                   {metadata.primary_exchange}

@@ -175,9 +175,65 @@ def get_price_history(ticker: str):
     return [{"date": doc["_source"]["date"], "price": doc["_source"]["close"]} for doc in data]
 
 
+def resolve_identifier_to_ticker(identifier: str) -> str:
+    """
+    Resolve input which may be a ticker (e.g., AAPL) or a company name (e.g., Apple Inc.)
+    to a single ticker using the stock_metadata index.
+    - Exact ticker term match first
+    - Then search by name (full or partial)
+    - If ambiguous, raise 409 with candidate list
+    """
+    s = (identifier or "").strip()
+    if not s:
+        raise HTTPException(400, "Empty ticker or company name.")
+
+    # 1) Exact ticker match
+    exact = run_opensearch_query(os_client, "stock_metadata", {
+        "size": 1,
+        "query": {"term": {"ticker": s.upper()}}
+    })
+    if exact:
+        return exact[0]["_source"]["ticker"]
+
+    # 2) Company name search
+    name_hits = run_opensearch_query(os_client, "stock_metadata", {
+        "size": 5,
+        "_source": ["ticker", "name", "active"],
+        "query": {
+            "bool": {
+                "should": [
+                    {"match_phrase": {"name": {"query": s}}},
+                    {"match": {"name": {"query": s, "operator": "and"}}},
+                    {"match_phrase_prefix": {"name": {"query": s}}}
+                ],
+                "minimum_should_match": 1
+            }
+        }
+    })
+    if not name_hits:
+        raise HTTPException(404, f"No ticker or company named '{s}' found.")
+
+    # Prefer exact case-insensitive name match if unique
+    exact_name = [h for h in name_hits if (h.get("_source", {}).get("name") or "").lower() == s.lower()]
+    if len(exact_name) == 1:
+        return exact_name[0]["_source"]["ticker"]
+
+    # Prefer a single active match if that disambiguates
+    active_only = [h for h in name_hits if h.get("_source", {}).get("active") is True]
+    if len(active_only) == 1:
+        return active_only[0]["_source"]["ticker"]
+
+    # Ambiguous: cannot return two tickers' data
+    options = ", ".join(f"{h['_source'].get('ticker')} ({h['_source'].get('name')})" for h in name_hits)
+    raise HTTPException(409, f"Ambiguous company name '{s}'. Candidates: {options}. Please specify a ticker symbol.")
+
+
 @app.get("/api/stocks/{ticker}")
 def get_stock_data(ticker: str):
-    docs = fetch_earnings(ticker.upper())
+    # Accept ticker code or company name
+    resolved = resolve_identifier_to_ticker(ticker)
+    docs = fetch_earnings(resolved.upper())
+
     quarters = {}
     for doc in docs:
         src = doc["_source"]
@@ -223,7 +279,7 @@ def get_stock_data(ticker: str):
             "bool": {
                 "must": [{
                     "term": {
-                        "ticker": ticker.upper()
+                        "ticker": resolved.upper()
                     }
                 }]
             }
@@ -236,7 +292,7 @@ def get_stock_data(ticker: str):
     # Fetch metadata from stock_metadata
     meta_query = {
         "size": 1,
-        "query": {"term": {"ticker": ticker.upper()}}
+        "query": {"term": {"ticker": resolved.upper()}}
     }
     meta_data = run_opensearch_query(os_client, "stock_metadata", meta_query)
     metadata = meta_data[0]["_source"] if meta_data else {}
