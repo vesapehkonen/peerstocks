@@ -15,7 +15,6 @@ COPY . .
 
 EXPOSE 8000
 
-# Use exec/JSON form so signals are handled correctly
 ENTRYPOINT ["/usr/local/bin/uvicorn"]
-# Default command; you can override it in `docker run`
-CMD ["main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+CMD ["main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*", "--access-log", "--log-level", "info"]
