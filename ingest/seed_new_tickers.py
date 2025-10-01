@@ -74,7 +74,7 @@ def seed(tickers, start_date, end_date, polygon_api_key, run_summary):
 
     if run_summary:
         print("[SUMMARY] update_stock_summary.py …")
-        os.system(f"{sys.executable} update_stock_summary.py")
+        os.system(f"{sys.executable} update_stock_summary.py {tickers}")
 
 
 def load_tickers(arg: str) -> str:

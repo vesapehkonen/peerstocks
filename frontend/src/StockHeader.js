@@ -49,7 +49,7 @@ export default function StockHeader({ ticker, metadata, dailyPrices }) {
         {/* Identity */}
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800 grid place-items-center text-xs font-bold">
-            {ticker?.slice(0, 3)}
+            {ticker?.slice(0, 4)}
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">

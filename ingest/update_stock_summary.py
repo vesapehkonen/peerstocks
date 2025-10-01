@@ -2,6 +2,8 @@ import json
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Dict
+import sys
+from pathlib import Path
 
 from config import settings
 from opensearchpy import OpenSearch
@@ -292,14 +294,30 @@ def index_summary_doc(ticker, doc):
     _index("stock_summary", ticker, {"ticker": ticker, **doc})
 
 
-def update():
-    tickers = fetch_all_tickers()
-    print(f"Found {len(tickers)} tickers")
+def parse_tickers_arg(arg: str) -> list[str]:
+    """
+    Accept either a comma-separated string like "AAPL,NKE,AMZN"
+    or a file path with one ticker per line. Returns upper-cased tickers.
+    """
+    if "," in arg:
+        return [t.strip().upper() for t in arg.split(",") if t.strip()]
+    p = Path(arg)
+    if p.exists() and p.is_file():
+        return [line.strip().upper() for line in p.read_text().splitlines() if line.strip()]
+    return [arg.strip().upper()] if arg.strip() else []
+
+
+def update(tickers: list[str] | None = None):
+    if tickers is None:
+        tickers = fetch_all_tickers()
+        print(f"Found {len(tickers)} tickers")
+    else:
+        print(f"Using {len(tickers)} tickers from argument")
 
     # Load sectors once per run (slow-changing metadata)
     sector_map = fetch_sector_map()
     print(f"Loaded sectors for {len(sector_map)} tickers from stock_metadata")
-    
+
     for ticker in tickers:
         tkr_key = ticker.upper()
         prices = fetch_prices(ticker)
@@ -336,9 +354,11 @@ def update():
         if doc:
             index_summary_doc(ticker, doc)
 
-
 def main():
-    update()
+    tickers = None
+    if len(sys.argv) > 1 and sys.argv[1]:
+        tickers = parse_tickers_arg(sys.argv[1])
+    update(tickers)
 
 
 if __name__ == "__main__":
