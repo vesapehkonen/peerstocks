@@ -718,9 +718,14 @@ def advanced_search(params: AdvancedSearchParams = Body(...)):
         }]
     }
 
-    # Apply filters
     if params.peMax is not None:
         query["query"]["bool"]["must"].append({"range": {"ttm_pe_ratio": {"lte": params.peMax}}})
+
+    if params.revenueGrowth1y is not None:
+        query["query"]["bool"]["must"].append({"range": {"revenue_growth_1y": {"gte": params.revenueGrowth1y}}})
+
+    if params.revenueGrowth3y is not None:
+        query["query"]["bool"]["must"].append({"range": {"revenue_growth_3y": {"gte": params.revenueGrowth3y}}})
 
     if params.revenueGrowth5y is not None:
         query["query"]["bool"]["must"].append({"range": {"revenue_growth_5y": {"gte": params.revenueGrowth5y}}})
@@ -729,11 +734,10 @@ def advanced_search(params: AdvancedSearchParams = Body(...)):
         query["query"]["bool"]["must"].append({"range": {"price_growth_5y": {"gte": params.priceGrowth}}})
 
     if params.stockType:
-        if len(params.stockType) > 0:
-            query["query"]["bool"]["filter"].append({"terms": {"stock_type.keyword": params.stockType}})
+        query["query"]["bool"]["filter"].append({"terms": {"stock_type.keyword": params.stockType}})
 
     if params.sector:
-        if len(params.sector) > 0:
-            query["query"]["bool"]["filter"].append({"terms": {"sector.keyword": params.sector}})
+        query["query"]["bool"]["filter"].append({"terms": {"sector.keyword": params.sector}})
+
     hits = run_opensearch_query(os_client, "stock_summary", query)
     return [hit["_source"] for hit in hits]
