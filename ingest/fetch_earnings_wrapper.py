@@ -7,6 +7,7 @@ import sys
 
 from config import settings
 from opensearchpy import OpenSearch, helpers
+import fetch_earnings
 
 DEFAULT_INDEX = "earnings_data"
 DEFAULT_OUTPUT = "earnings.ndjson"
@@ -190,16 +191,16 @@ def main():
 
     end = args.end_date or dt.date.today().strftime("%Y-%m-%d")
     if args.start_date:
-        buckets = [{"ticker": t, "date": arg.start_date} for t in ticker_list]
+        tickers_with_dates = [{"ticker": t, "date": args.start_date} for t in tickers_list]
     else:
-        buckets = latest_dates(client, tickers_list)
-    print(buckets)
-    for bucket in buckets:
-        bucket["date"] = plus_one(bucket["date"])
-        print(f"[EARNINGS] {tickers_csv[:80]}{'...' if len(tickers_csv)>80 else ''} {bucket['date']}..{end}")
+        tickers_with_dates = latest_dates(client, tickers_list)
+        for tic in tickers_with_dates:
+            tic["date"] = plus_one(tic["date"])
 
-    import fetch_earnings
-    fetch_earnings.fetch_earnings_with_different_start_date(buckets, end, args.api_key, args.output)
+    for tic in tickers_with_dates:
+        print(f"[EARNINGS] Fetch {tic['ticker']} {tic['date']}..{end}")
+
+    fetch_earnings.fetch_earnings_with_different_start_date(tickers_with_dates, end, args.api_key, args.output)
 
     # Index to OpenSearch
     added = index_ndjson(client, args.index, args.output)

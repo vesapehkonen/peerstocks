@@ -12,7 +12,7 @@ DEFAULT_OUTPUT_FILE = "earnings.json"
 # ────────────────────────────────────────────────────────────────────────────────
 
 
-def polygon_get(url, api_key, max_retries=10, sleep_base=2):
+def polygon_get(url, api_key, max_retries=10, sleep_base=4):
     """GET with basic retry & better error messages."""
     headers = {"Accept": "application/json"}
     for attempt in range(max_retries):
@@ -68,7 +68,6 @@ def fetch_earnings_range(ticker, start_date, end_date, api_key):
 
         next_url = data.get("next_url")
         url = _with_key(next_url, api_key) if next_url else None
-
         # keep requests/minute modest; tune if your plan allows faster
         time.sleep(1.2)
 
