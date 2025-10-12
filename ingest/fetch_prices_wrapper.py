@@ -230,7 +230,8 @@ def main():
                 print(f"[INDEX] Wrote {added} docs to '{args.index}'")
 
     if args.run_summary:
-        os.system(f"{sys.executable} update_stock_summary.py {tickers_list}")
+        arg = ",".join(tickers_list)
+        os.system(f"{sys.executable} update_stock_summary.py {arg}")
 
 
 if __name__ == "__main__":

@@ -18,6 +18,11 @@ function AdvancedSearch() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: "ticker", direction: "asc" });
+  const [debtToEquityMax, setDebtToEquityMax] = useState("");
+  const [marketCapBucket, setMarketCapBucket] = useState(""); // Any/<2B/2-10B/10-100B/>100B
+  const [roaMin, setRoaMin] = useState("");
+  const [roeMin, setRoeMin] = useState("");
+  const [dividendYieldMin, setDividendYieldMin] = useState(""); // disabled UI, placeholder only
 
   // NEW: selection + compare
   const navigate = useNavigate();
@@ -77,6 +82,11 @@ function AdvancedSearch() {
       revenueGrowth1y: revenueGrowth1y ? parseFloat(revenueGrowth1y) : null,
       revenueGrowth3y: revenueGrowth3y ? parseFloat(revenueGrowth3y) : null,
       revenueGrowth5y: revenueGrowth5y ? parseFloat(revenueGrowth5y) : null,
+      debtToEquityMax: debtToEquityMax ? parseFloat(debtToEquityMax) : null,
+      marketCapBucket: marketCapBucket || null, // "", "<2B", "2-10B", "10-100B", ">100B"
+      roaMin: roaMin ? parseFloat(roaMin) : null,
+      roeMin: roeMin ? parseFloat(roeMin) : null,
+      dividendYieldMin: null, // UI disabled; backend not supported yet
       stockType: selectedTypes,
       sector: selectedSectors,
     };
@@ -116,6 +126,15 @@ function AdvancedSearch() {
     });
   }
 
+  const formatMarketCap = (n) => {
+    if (n == null) return "–";
+    const abs = Math.abs(n);
+    if (abs >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+    if (abs >= 1e9)  return `$${(n / 1e9).toFixed(2)}B`;
+    if (abs >= 1e6)  return `$${(n / 1e6).toFixed(2)}M`;
+    return `$${n.toFixed(0)}`;
+  };
+  
   const allVisibleSelected = results.length > 0 && results.every((r) => selected.has(r.ticker));
 
   return (
@@ -132,7 +151,7 @@ function AdvancedSearch() {
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold mb-2">Valuation</h2>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <label className="flex justify-between items-center">
                   <span className="text-sm font-medium">Max P/E Ratio</span>
                   <input
@@ -143,22 +162,48 @@ function AdvancedSearch() {
                     placeholder="15"
                   />
                 </label>
+                <label className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Max Debt-to-Equity</span>
+                  <input
+                    type="number"
+                    value={debtToEquityMax}
+                    onChange={(e) => setDebtToEquityMax(e.target.value)}
+                    className="w-24 p-1.5 text-sm border rounded dark:bg-gray-700 dark:text-white"
+                    placeholder="1.5"
+                    step="0.01"
+                  />
+                </label>
+                <label className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Market Cap</span>
+                  <select
+                    value={marketCapBucket}
+                    onChange={(e) => setMarketCapBucket(e.target.value)}
+                    className="w-24 p-1.5 text-sm border rounded dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">Any</option>
+                    <option value="<2B">&lt; $2B</option>
+                    <option value="2-10B">$2B–$10B</option>
+                    <option value="10-100B">$10B–$100B</option>
+                    <option value=">100B">&gt; $100B</option>
+                  </select>
+                </label>
               </div>
             </div>
 
             <div>
               <h2 className="text-lg font-semibold mb-2">Growth</h2>
-              <div className="space-y-3">
-                {["1y", "3y", "5y"].map((label, i) => {
-                  const value = [revenueGrowth1y, revenueGrowth3y, revenueGrowth5y][i];
-                  const setValue = [setRevenueGrowth1y, setRevenueGrowth3y, setRevenueGrowth5y][i];
+              <div className="space-y-2">
+                {[
+                  { label: "1y", value: revenueGrowth1y, set: setRevenueGrowth1y },
+                  { label: "5y", value: revenueGrowth5y, set: setRevenueGrowth5y },
+                ].map(({ label, value, set }) => {
                   return (
                     <label key={label} className="flex justify-between items-center">
                       <span className="text-sm font-medium">Revenue Growth ({label})</span>
                       <input
                         type="number"
                         value={value}
-                        onChange={(e) => setValue(e.target.value)}
+                        onChange={(e) => set(e.target.value)}
                         className="w-24 p-1.5 text-sm border rounded dark:bg-gray-700 dark:text-white"
                         placeholder="5"
                       />
@@ -181,31 +226,57 @@ function AdvancedSearch() {
 
           {/* Right Column: Types + Sectors */}
           <div className="space-y-6">
+            {/*<div>
+               <h2 className="text-lg font-semibold mb-2">Stock Types</h2>
+               <fieldset disabled className="opacity-50">
+
+                 ...
+               </fieldset>
+            </div>*/}
+
             <div>
-              <h2 className="text-lg font-semibold mb-2">Stock Types</h2>
-              <fieldset disabled className="opacity-50">
-                {" "}
-                {/*  when this feature is implemented remove this */}
-                <div className="flex flex-col gap-2">
-                  {stockTypes.map((type) => (
-                    <label key={type} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        value={type}
-                        checked={selectedTypes.includes(type)}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setSelectedTypes((prev) => (checked ? [...prev, type] : prev.filter((t) => t !== type)));
-                        }}
-                      />
-                      <span>{type}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>{" "}
-              {/*  when this feature is implemented remove this */}
+              <h2 className="text-lg font-semibold mb-2">Profitability</h2>
+              <div className="space-y-2">
+                <label className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Min ROA (%)</span>
+                  <input
+                    type="number"
+                    value={roaMin}
+                    onChange={(e) => setRoaMin(e.target.value)}
+                    className="w-24 p-1.5 text-sm border rounded dark:bg-gray-700 dark:text-white"
+                    placeholder="5"
+                    step="0.1"
+                  />
+                </label>
+                <label className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Min ROE (%)</span>
+                  <input
+                    type="number"
+                    value={roeMin}
+                    onChange={(e) => setRoeMin(e.target.value)}
+                    className="w-24 p-1.5 text-sm border rounded dark:bg-gray-700 dark:text-white"
+                    placeholder="10"
+                    step="0.1"
+                  />
+                </label>
+              </div>
             </div>
 
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Dividends</h2>
+              <fieldset disabled title="Disabled: dividends data not available yet" className="opacity-50">
+                <label className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Min Dividend Yield (%)</span>
+                  <input
+                    type="number"
+                    value={dividendYieldMin}
+                    onChange={(e) => setDividendYieldMin(e.target.value)}
+                    className="w-24 p-1.5 text-sm border rounded dark:bg-gray-700 dark:text-white"
+                    placeholder="2"
+                  />
+                </label>
+              </fieldset>
+            </div>
             <div>
               <h2 className="text-lg font-semibold mb-2">Sectors</h2>
 
@@ -296,10 +367,15 @@ function AdvancedSearch() {
                     ["Ticker", "ticker"],
                     ["P/E", "ttm_pe_ratio"],
                     ["Revenue Growth (1y)", "revenue_growth_1y"],
-                    ["Revenue Growth (3y)", "revenue_growth_3y"],
                     ["Revenue Growth (5y)", "revenue_growth_5y"],
                     ["Price Growth (5y)", "price_growth_5y"],
+                    ["ROA (%)", "roa"],
+                    ["ROE (%)", "roe"],
+                    ["D/E", "debt_to_equity"],
+                    ["Market Cap", "market_cap"],
+                    ["Div Yield (%)", "dividend_yield"],
                   ].map(([label, key]) => (
+
                     <th
                       key={key}
                       className="text-left p-2 cursor-pointer select-none align-top"
@@ -342,9 +418,13 @@ function AdvancedSearch() {
                       </td>
                       <td className="p-2">{row.ttm_pe_ratio ?? "–"}</td>
                       <td className="p-2">{row.revenue_growth_1y != null ? row.revenue_growth_1y.toFixed(2) : "–"}%</td>
-                      <td className="p-2">{row.revenue_growth_3y != null ? row.revenue_growth_3y.toFixed(2) : "–"}%</td>
                       <td className="p-2">{row.revenue_growth_5y != null ? row.revenue_growth_5y.toFixed(2) : "–"}%</td>
                       <td className="p-2">{row.price_growth_5y != null ? row.price_growth_5y.toFixed(2) : "–"}%</td>
+                      <td className="p-2">{row.roa != null ? row.roa.toFixed(2) : "–"}%</td>
+                      <td className="p-2">{row.roe != null ? row.roe.toFixed(2) : "–"}%</td>
+                      <td className="p-2">{row.debt_to_equity != null ? row.debt_to_equity.toFixed(2) : "–"}</td>
+                      <td className="p-2">{formatMarketCap(row.market_cap)}</td>
+                      <td className="p-2">{row.dividend_yield != null ? row.dividend_yield.toFixed(2) : "–"}%</td>
                       <td className="p-2">
                         {row.price_history ? (
                           <Sparklines data={row.price_history} width={80} height={20}>

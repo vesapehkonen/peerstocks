@@ -12,7 +12,7 @@ DEFAULT_OUTPUT_FILE = "earnings.json"
 # ────────────────────────────────────────────────────────────────────────────────
 
 
-def polygon_get(url, api_key, max_retries=10, sleep_base=4):
+def polygon_get(url, api_key, max_retries=10, sleep_base=8):
     """GET with basic retry & better error messages."""
     headers = {"Accept": "application/json"}
     for attempt in range(max_retries):
@@ -120,6 +120,8 @@ def process_earnings_data(results):
             _safe_get(r, ["financials", "balance_sheet", "equity", "value"]),
             "cash_flow":
             _safe_get(r, ["financials", "cash_flow_statement", "net_cash_flow", "value"]),
+            "basic_average_shares": _safe_get(r, ["financials", "income_statement", "basic_average_shares", "value"]),
+            "diluted_average_shares": _safe_get(r, ["financials", "income_statement", "diluted_average_shares", "value"]),
         })
     return docs
 

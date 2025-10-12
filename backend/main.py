@@ -31,7 +31,10 @@ class AdvancedSearchParams(BaseModel):
     revenueGrowth5y: Optional[float] = None
     stockType: List[str] = []
     sector: List[str] = []
-
+    debtToEquityMax: Optional[float] = None
+    marketCapBucket: Optional[str] = None
+    roaMin: Optional[float] = None
+    roeMin: Optional[float] = None
 
 @app.get("/healthz")
 def healthz():
@@ -718,26 +721,45 @@ def advanced_search(params: AdvancedSearchParams = Body(...)):
         }]
     }
 
+    must = query["query"]["bool"]["must"]
+    filt = query["query"]["bool"]["filter"]
+
     if params.peMax is not None:
-        query["query"]["bool"]["must"].append({"range": {"ttm_pe_ratio": {"lte": params.peMax}}})
-
+        filt.append({"range": {"ttm_pe_ratio": {"lte": params.peMax}}})
     if params.revenueGrowth1y is not None:
-        query["query"]["bool"]["must"].append({"range": {"revenue_growth_1y": {"gte": params.revenueGrowth1y}}})
-
+        filt.append({"range": {"revenue_growth_1y": {"gte": params.revenueGrowth1y}}})
     if params.revenueGrowth3y is not None:
-        query["query"]["bool"]["must"].append({"range": {"revenue_growth_3y": {"gte": params.revenueGrowth3y}}})
-
+        filt.append({"range": {"revenue_growth_3y": {"gte": params.revenueGrowth3y}}})
     if params.revenueGrowth5y is not None:
-        query["query"]["bool"]["must"].append({"range": {"revenue_growth_5y": {"gte": params.revenueGrowth5y}}})
-
+        filt.append({"range": {"revenue_growth_5y": {"gte": params.revenueGrowth5y}}})
     if params.priceGrowth is not None:
-        query["query"]["bool"]["must"].append({"range": {"price_growth_5y": {"gte": params.priceGrowth}}})
-
+        filt.append({"range": {"price_growth_5y": {"gte": params.priceGrowth}}})
     if params.stockType:
-        query["query"]["bool"]["filter"].append({"terms": {"stock_type.keyword": params.stockType}})
-
+        filt.append({"terms": {"stock_type.keyword": params.stockType}})
     if params.sector:
-        query["query"]["bool"]["filter"].append({"terms": {"sector.keyword": params.sector}})
+        filt.append({"terms": {"sector.keyword": params.sector}})
+
+    if params.debtToEquityMax is not None:
+        filt.append({"range": {"debt_to_equity": {"lte": params.debtToEquityMax}}})
+
+    bucket = params.marketCapBucket
+    if bucket:
+        if bucket == "<2B":
+            filt.append({"range": {"market_cap": {"lt": 2e9}}})
+        elif bucket == "2-10B":
+            filt.append({"range": {"market_cap": {"gte": 2e9, "lt": 10e9}}})
+        elif bucket == "10-100B":
+            filt.append({"range": {"market_cap": {"gte": 10e9, "lt": 100e9}}})
+        elif bucket == ">100B":
+            filt.append({"range": {"market_cap": {"gte": 100e9}}})
+
+    PCT_SCALE = 1.0  # set to 0.01 if your index stores fractions (e.g., 0.12 for 12%)
+    if params.roaMin is not None:
+        # change field to 'roa' if you store fractions; keep PCT_SCALE in sync
+        filt.append({"range": {"roa": {"gte": params.roaMin * PCT_SCALE}}})
+    if params.roeMin is not None:
+        filt.append({"range": {"roe": {"gte": params.roeMin * PCT_SCALE}}})
 
     hits = run_opensearch_query(os_client, "stock_summary", query)
-    return [hit["_source"] for hit in hits]
+    return [h["_source"] for h in hits]
+

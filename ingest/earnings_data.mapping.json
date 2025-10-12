@@ -70,6 +70,12 @@
         },
         "ticker" : {
           "type" : "keyword"
+        },
+        "basic_average_shares": {
+          "type": "double"
+        },
+        "diluted_average_shares": {
+          "type": "double"
         }
       }
     }

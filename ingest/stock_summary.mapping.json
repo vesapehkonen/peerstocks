@@ -45,7 +45,12 @@
         },
         "sector": {
           "type": "keyword"
-        }
+        },
+        "roa": { "type": "double" },
+        "roe": { "type": "double" },
+        "debt_to_equity": { "type": "double" },
+        "market_cap": { "type": "double" },
+        "dividend_yield": { "type": "double" }
       }
     }
   }

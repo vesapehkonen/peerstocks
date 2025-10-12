@@ -145,7 +145,7 @@ def compute_ttm_eps(earnings):
     return None
 
 
-def latest_price(price_data):
+def get_latest_price(price_data):
     if not price_data:
         return None
     return price_data[-1][1]
@@ -290,6 +290,31 @@ def get_last_n_annual_revenues(earnings: list, n: int = 5):
     return res
 
 
+def compute_financial_ratios(latest_earnings: dict, latest_price: float | None = None) -> dict:
+    """
+    Compute ROA, ROE, and Debt-to-Equity from a single earnings document (_source).
+    Returns a dict of computed ratios.
+    """
+    src = latest_earnings.get("_source", {})
+    assets = src.get("assets")
+    equity = src.get("equity")
+    liabilities = src.get("liabilities")
+    net_income = src.get("net_income")
+    shares = src.get("diluted_average_shares") or src.get("basic_average_shares")
+
+    ratios = {}
+    if isinstance(net_income, (int, float)) and isinstance(assets, (int, float)) and assets > 0:
+        ratios["roa"] = round(net_income / assets * 100, 2)
+    if isinstance(net_income, (int, float)) and isinstance(equity, (int, float)) and equity > 0:
+        ratios["roe"] = round(net_income / equity * 100, 2)
+    if isinstance(liabilities, (int, float)) and isinstance(equity, (int, float)) and equity > 0:
+        ratios["debt_to_equity"] = round(liabilities / equity, 2)
+    if latest_price and isinstance(shares, (int, float)) and shares > 0:
+        ratios["market_cap"] = round(latest_price * shares, 2)
+
+    return ratios
+
+
 def index_summary_doc(ticker, doc):
     _index("stock_summary", ticker, {"ticker": ticker, **doc})
 
@@ -329,7 +354,7 @@ def update(tickers: list[str] | None = None):
         doc = {}
 
         ttm_eps = compute_ttm_eps(earnings)
-        latest = latest_price(prices)
+        latest = get_latest_price(prices)
         if ttm_eps and latest:
             doc["ttm_pe_ratio"] = round(latest / ttm_eps, 2)
 
@@ -346,11 +371,15 @@ def update(tickers: list[str] | None = None):
         doc["price_history"] = get_price_trend_5y(ticker)
         doc["revenue_history"] = get_last_n_annual_revenues(earnings)
 
+        latest_earn = earnings[0]  # already sorted desc by filing_date
+        ratios = compute_financial_ratios(latest_earn, get_latest_price(prices))
+        doc.update(ratios)
+
         # Attach sector from stock_metadata (if available)
         sector = sector_map.get(tkr_key)
         if sector:
             doc["sector"] = sector
-        
+
         if doc:
             index_summary_doc(ticker, doc)
 
