@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
+import time
 
 from config import settings
 from fastapi import Body, FastAPI, HTTPException, Query
@@ -708,17 +709,14 @@ def get_stocks(tickers: List[str] = Query(..., description="Repeat param, e.g. ?
 def advanced_search(params: AdvancedSearchParams = Body(...)):
     query = {
         "size": 100,
-        "query": {
-            "bool": {
-                "must": [],
-                "filter": [],
-            }
-        },
-        "sort": [{
-            "ticker": {
-                "order": "asc"
-            }
-        }]
+        "track_total_hits": False,            # faster when you don't need exact totals
+        "query": {"bool": {"must": [], "filter": []}},
+        "sort": [
+            {"ticker": {"order": "asc", "missing": "_last"}},
+            {"_id": {"order": "asc"}}         # stable tie-breaker for consistent ordering
+        ],
+        # "_source": True,                    # True (default) returns all fields; omit for all
+        # "request_cache": True               # enable if your queries repeat a lot
     }
 
     must = query["query"]["bool"]["must"]
@@ -735,10 +733,9 @@ def advanced_search(params: AdvancedSearchParams = Body(...)):
     if params.priceGrowth is not None:
         filt.append({"range": {"price_growth_5y": {"gte": params.priceGrowth}}})
     if params.stockType:
-        filt.append({"terms": {"stock_type.keyword": params.stockType}})
+        filt.append({"terms": {"stock_type": params.stockType}})
     if params.sector:
-        filt.append({"terms": {"sector.keyword": params.sector}})
-
+        filt.append({"terms": {"sector": params.sector}})
     if params.debtToEquityMax is not None:
         filt.append({"range": {"debt_to_equity": {"lte": params.debtToEquityMax}}})
 
@@ -753,13 +750,18 @@ def advanced_search(params: AdvancedSearchParams = Body(...)):
         elif bucket == ">100B":
             filt.append({"range": {"market_cap": {"gte": 100e9}}})
 
-    PCT_SCALE = 1.0  # set to 0.01 if your index stores fractions (e.g., 0.12 for 12%)
+    PCT_SCALE = 1.0
     if params.roaMin is not None:
-        # change field to 'roa' if you store fractions; keep PCT_SCALE in sync
         filt.append({"range": {"roa": {"gte": params.roaMin * PCT_SCALE}}})
     if params.roeMin is not None:
         filt.append({"range": {"roe": {"gte": params.roeMin * PCT_SCALE}}})
 
-    hits = run_opensearch_query(os_client, "stock_summary", query)
-    return [h["_source"] for h in hits]
+    import json
+    print(f"INFO:     /api/advanced-search: query={json.dumps(query, indent=None)}")
+    t0 = time.perf_counter()
 
+    hits = run_opensearch_query(os_client, "stock_summary", query)
+
+    wall_ms = round((time.perf_counter() - t0) * 1000, 2)
+    print(f"INFO:     /api/advanced-search: OpenSearch query took {wall_ms} ms")
+    return [h["_source"] for h in hits]

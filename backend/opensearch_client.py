@@ -10,7 +10,6 @@ def build_opensearch_client() -> OpenSearch:
     auth = None
     if settings.OS_USER and settings.OS_PASS:
         auth = (settings.OS_USER, settings.OS_PASS.get_secret_value())
-
     client = OpenSearch(
         hosts=[str(settings.OS_HOST)],
         http_auth=auth,
@@ -19,6 +18,7 @@ def build_opensearch_client() -> OpenSearch:
         retry_on_timeout=True,
         verify_certs=False,
         ssl_show_warn=False,
+        transport_options={"socket_keepalive": True},
     )
     return client
 
