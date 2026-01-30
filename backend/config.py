@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     APP_ENV: Literal["dev", "prod"] = "dev"
 
-    OPENAI_MODEL: str = "gpt-5"
+    OPENAI_MODEL: str = "gpt-5-mini"
     OPENAI_API_KEY: SecretStr
     CORS_ORIGINS: Optional[Union[str, List[str]]] = None
     OS_HOST: HttpUrl
