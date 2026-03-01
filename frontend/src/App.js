@@ -35,45 +35,37 @@ function HomePage() {
   }, [ticker]);
 
   return (
-    <div className="max-w-5xl mx-auto bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 py-8 px-4">
-      {/* Search hero */}
-      <div className="mb-3 flex flex-col items-center justify-center gap-4">
-        <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 w-full max-w-md">
-          <SearchForm onSearch={setTicker} />
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-          Tip: Try AAPL, TSLA, MSFT, GOOG, AMZN — or use{" "}
-          <Link to="/advanced-search" className="underline text-blue-600 dark:text-blue-400">
+    <div className="max-w-5xl mx-auto bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 py-4 px-4">
+      <div className="flex flex-col items-center text-center mb-3">
+        <h1 className="text-lg sm:text-xl font-semibold">Quick stock lookup.</h1>
+
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Price, EPS and P/E history for one ticker.{" "}
+          <Link to="/advanced-search" className="text-blue-600 dark:text-blue-400 hover:underline">
             Advanced Search
-          </Link>
-          .
+          </Link>{" "}
+          for multi-stock screening.
         </p>
       </div>
 
-      {/* Trending quick picks */}
-      <div className="mb-6">
+      <div className="mb-6 flex justify-center">
+        <SearchForm onSearch={setTicker} />
+      </div>
+
+      <div className="mb-4">
         <TrendingTickers onSelect={(sym) => setTicker(sym)} />
       </div>
 
       {/* Data sections shown after a ticker is selected */}
-      <div className="space-y-8">
+      <div className="space-y-4">
         {stockData?.quarterly?.length > 0 && (
           <>
-
-
-      {stockData && (
-        <StockHeader
-          ticker={ticker}
-          metadata={stockData.metadata}
-          dailyPrices={stockData.daily_prices}
-        />
-      )}
-
-
-
+            {stockData && (
+              <StockHeader ticker={ticker} metadata={stockData.metadata} dailyPrices={stockData.daily_prices} />
+            )}
 
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-100">Daily Stock Price</h2>
+              <h2 className="text-xl font-semibold mb-2 text-gray-700 dark:text-gray-100">Daily Stock Price</h2>
               <DailyPriceChart dailyData={stockData.daily_prices} range={priceRange} setRange={setPriceRange} />
             </div>
 

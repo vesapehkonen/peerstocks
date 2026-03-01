@@ -5,32 +5,41 @@ function SearchForm({ onSearch }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (input.trim()) {
-      onSearch(input.trim().toUpperCase());
-    }
+    const value = input.trim().toUpperCase();
+    if (value) onSearch(value);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center justify-center gap-0 rounded overflow-hidden shadow">
-      {/* Icon + Input */}
-      <div className="relative w-72">
-        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg">🔍</span>
+    <form onSubmit={handleSubmit} className="w-full flex justify-center">
+      <div
+        className="flex w-full max-w-sm items-stretch
+                   rounded-lg overflow-hidden
+                   border border-gray-200 dark:border-gray-700
+                   bg-white dark:bg-gray-800"
+      >
+        {/* Icon */}
+        <div className="flex items-center px-3 text-gray-400">🔍</div>
+
+        {/* Input */}
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Enter stock ticker (e.g. AAPL)"
-          className="w-full pl-10 pr-3 py-2 border border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 px-3 py-2 outline-none bg-transparent
+                     text-gray-900 dark:text-gray-100
+                     placeholder:text-gray-400 dark:placeholder:text-gray-500"
         />
-      </div>
 
-      {/* Button, aligned right next to input */}
-      <button
-        type="submit"
-        className="px-4 py-2 bg-blue-500 text-white font-medium hover:bg-blue-600 transition border border-blue-500 border-l-0"
-      >
-        Search
-      </button>
+        {/* Button */}
+        <button
+          type="submit"
+          className="px-5 py-2 font-medium text-white
+                     bg-blue-600 hover:bg-blue-700 transition"
+        >
+          Search
+        </button>
+      </div>
     </form>
   );
 }
