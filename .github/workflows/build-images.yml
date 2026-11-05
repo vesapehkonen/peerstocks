@@ -1,0 +1,28 @@
+name: Build Docker images
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [backend, frontend, ingest]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build ${{ matrix.image }} image
+        run: |
+          if [ "${{ matrix.image }}" = frontend ]; then
+            docker build --build-arg REACT_APP_API_BASE_URL=/api -t frontend:ci frontend
+          else
+            docker build -t "${{ matrix.image }}:ci" "${{ matrix.image }}"
+          fi
